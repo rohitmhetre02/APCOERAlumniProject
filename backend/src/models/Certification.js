@@ -32,10 +32,10 @@ export class Certification {
   // Create new certification
   static async create(userId, certificationData) {
     try {
-      const { title, organization, year, credential_id, credential_url, issue_date, expiry_date } = certificationData;
+      const { title, organization, year, credential_id } = certificationData;
       const result = await pool.query(
-        'INSERT INTO certifications (user_id, title, organization, year, credential_id, credential_url, issue_date, expiry_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-        [userId, title, organization, year, credential_id, credential_url, issue_date, expiry_date, new Date(), new Date()]
+        'INSERT INTO certifications (user_id, title, organization, year, credential_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [userId, title, organization, year, credential_id, new Date(), new Date()]
       );
       return result.rows[0];
     } catch (error) {
@@ -47,10 +47,10 @@ export class Certification {
   // Update certification
   static async update(id, certificationData) {
     try {
-      const { title, organization, year, credential_id, credential_url, issue_date, expiry_date } = certificationData;
+      const { title, organization, year, credential_id } = certificationData;
       const result = await pool.query(
-        'UPDATE certifications SET title = $1, organization = $2, year = $3, credential_id = $4, credential_url = $5, issue_date = $6, expiry_date = $7, updated_at = $8 WHERE id = $9 RETURNING *',
-        [title, organization, year, credential_id, credential_url, issue_date, expiry_date, new Date(), id]
+        'UPDATE certifications SET title = $1, organization = $2, year = $3, credential_id = $4, updated_at = $5 WHERE id = $6 RETURNING *',
+        [title, organization, year, credential_id, new Date(), id]
       );
       return result.rows[0];
     } catch (error) {
@@ -84,9 +84,6 @@ export class Certification {
           organization TEXT,
           year TEXT,
           credential_id TEXT,
-          credential_url TEXT,
-          issue_date TEXT,
-          expiry_date TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )

@@ -1,5 +1,4 @@
 // Import all models
-import { Profile } from './Profile.js';
 import { Education } from './Education.js';
 import { Skill } from './Skill.js';
 import { Language } from './Language.js';
@@ -7,9 +6,10 @@ import { Experience } from './Experience.js';
 import { Project } from './Project.js';
 import { Achievement } from './Achievement.js';
 import { Certification } from './Certification.js';
+import { Gallery } from './Gallery.js';
 
 // Export all models for clean imports
-export { Profile, Education, Skill, Language, Experience, Project, Achievement, Certification };
+export { Education, Skill, Language, Experience, Project, Achievement, Certification, Gallery };
 
 // Initialize all tables
 export const initializeAllTables = async () => {
@@ -17,14 +17,14 @@ export const initializeAllTables = async () => {
     console.log('🗄️ Initializing all profile tables...');
     
     await Promise.all([
-      Profile.createTable(),
       Education.createTable(),
       Skill.createTable(),
       Language.createTable(),
       Experience.createTable(),
       Project.createTable(),
       Achievement.createTable(),
-      Certification.createTable()
+      Certification.createTable(),
+      Gallery.createTable()
     ]);
     
     // Run migrations for specific tables

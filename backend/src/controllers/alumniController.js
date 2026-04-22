@@ -251,7 +251,7 @@ class AlumniController {
             role: 'alumni',
             isApproved: true,
             isFirstLogin: true,  // Admin-created alumni need to set password
-            status: 'active'       // Admin-created alumni are immediately active
+            status: 'inactive'     // Admin-created alumni need to be activated
           });
           
           // Check if emails should be delayed

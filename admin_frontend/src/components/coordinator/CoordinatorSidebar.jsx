@@ -10,7 +10,8 @@ import {
   ChatBubbleLeftRightIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  XMarkIcon
+  XMarkIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline';
 import ProfileDropdown from '../common/ProfileDropdown';
 
@@ -61,6 +62,11 @@ const CoordinatorSidebar = ({ sidebarOpen, setSidebarOpen, sidebarCollapsed, set
       name: 'News Management',
       path: '/coordinator/manage/news',
       icon: <NewspaperIcon className="w-5 h-5" />
+    },
+    {
+      name: 'Gallery',
+      path: '/coordinator/gallery',
+      icon: <PhotoIcon className="w-5 h-5" />
     },
     {
       name: 'Messages',

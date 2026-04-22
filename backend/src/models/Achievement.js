@@ -32,10 +32,10 @@ export class Achievement {
   // Create new achievement
   static async create(userId, achievementData) {
     try {
-      const { title, description, date, type } = achievementData;
+      const { title, description, date } = achievementData;
       const result = await pool.query(
-        'INSERT INTO achievements (user_id, title, description, date, type, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [userId, title, description, date, type, new Date(), new Date()]
+        'INSERT INTO achievements (user_id, title, description, date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [userId, title, description, date, new Date(), new Date()]
       );
       return result.rows[0];
     } catch (error) {
@@ -47,10 +47,10 @@ export class Achievement {
   // Update achievement
   static async update(id, achievementData) {
     try {
-      const { title, description, date, type } = achievementData;
+      const { title, description, date } = achievementData;
       const result = await pool.query(
-        'UPDATE achievements SET title = $1, description = $2, date = $3, type = $4, updated_at = $5 WHERE id = $6 RETURNING *',
-        [title, description, date, type, new Date(), id]
+        'UPDATE achievements SET title = $1, description = $2, date = $3, updated_at = $4 WHERE id = $5 RETURNING *',
+        [title, description, date, new Date(), id]
       );
       return result.rows[0];
     } catch (error) {
@@ -83,7 +83,6 @@ export class Achievement {
           title TEXT,
           description TEXT,
           date TEXT,
-          type TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )

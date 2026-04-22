@@ -26,6 +26,7 @@ import AlumniList from '../pages/common/AlumniList';
 import EventsManagement from '../pages/common/events/Events';
 import OpportunitiesManagement from '../pages/common/opportunities/Opportunities';
 import NewsManagement from '../pages/common/news/News';
+import Gallery from '../pages/common/Gallery';
 import Messages from '../pages/common/Messages';
 import Notifications from '../pages/common/Notifications';
 
@@ -65,44 +66,168 @@ const AppRoutes = () => {
       <Route path="/coordinator/reset-password" element={<ResetPassword />} />
 
       {/* Admin Routes */}
-      <Route path="/admin/*" element={
+      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/admin/dashboard" element={
         <ProtectedRoute requiredRole="admin">
           <AdminLayout>
-            <Routes>
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="coordinator" element={<CoordinatorManagement />} />
-              <Route path="content-approval" element={<ContentApproval />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="users/alumni" element={<AlumniList />} />
-              <Route path="manage/events" element={<EventsManagement />} />
-              <Route path="manage/opportunities" element={<OpportunitiesManagement />} />
-              <Route path="manage/news" element={<NewsManagement />} />
-                            <Route path="messages" element={<Messages />} />
-              <Route path="notifications" element={<Notifications />} />
-              <Route path="" element={<Navigate to="/admin/dashboard" replace />} />
-            </Routes>
+            <AdminDashboard />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/coordinator" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <CoordinatorManagement />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/content-approval" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <ContentApproval />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/profile" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <Profile />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/settings" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <Settings />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/users/alumni" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <AlumniList />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/manage/events" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <EventsManagement />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/manage/opportunities" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <OpportunitiesManagement />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/manage/news" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <NewsManagement />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/gallery" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <Gallery />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/messages" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <Messages />
+          </AdminLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/notifications" element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout>
+            <Notifications />
           </AdminLayout>
         </ProtectedRoute>
       } />
 
       {/* Coordinator Routes */}
-      <Route path="/coordinator/*" element={
+      <Route path="/coordinator" element={<Navigate to="/coordinator/dashboard" replace />} />
+      <Route path="/coordinator/dashboard" element={
         <ProtectedRoute requiredRole="coordinator">
           <CoordinatorLayout>
-            <Routes>
-              <Route path="dashboard" element={<CoordinatorDashboard />} />
-              <Route path="profile-approval" element={<ProfileApproval />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="users/alumni" element={<AlumniList />} />
-              <Route path="manage/events" element={<EventsManagement />} />
-              <Route path="manage/opportunities" element={<OpportunitiesManagement />} />
-              <Route path="manage/news" element={<NewsManagement />} />
-                            <Route path="messages" element={<Messages />} />
-              <Route path="notifications" element={<Notifications />} />
-              <Route path="" element={<Navigate to="/coordinator/dashboard" replace />} />
-            </Routes>
+            <CoordinatorDashboard />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/profile-approval" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <ProfileApproval />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/profile" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <Profile />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/settings" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <Settings />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/users/alumni" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <AlumniList />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/manage/events" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <EventsManagement />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/manage/opportunities" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <OpportunitiesManagement />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/manage/news" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <NewsManagement />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/gallery" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <Gallery />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/messages" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <Messages />
+          </CoordinatorLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/coordinator/notifications" element={
+        <ProtectedRoute requiredRole="coordinator">
+          <CoordinatorLayout>
+            <Notifications />
           </CoordinatorLayout>
         </ProtectedRoute>
       } />

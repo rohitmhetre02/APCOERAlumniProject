@@ -14,12 +14,8 @@ class News {
       'author_id UUID NOT NULL',
       'author_role VARCHAR(20) NOT NULL',
       'status VARCHAR(20) DEFAULT \'pending\'',
-      'views INTEGER DEFAULT 0',
-      'likes INTEGER DEFAULT 0',
-      'comments INTEGER DEFAULT 0',
       'tags TEXT[]',
       'featured BOOLEAN DEFAULT false',
-      'published_at TIMESTAMP',
       'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
       'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
     ]
@@ -52,7 +48,6 @@ class News {
         'CREATE INDEX IF NOT EXISTS idx_news_author_id ON news(author_id)',
         'CREATE INDEX IF NOT EXISTS idx_news_status ON news(status)',
         'CREATE INDEX IF NOT EXISTS idx_news_category ON news(category)',
-        'CREATE INDEX IF NOT EXISTS idx_news_published_at ON news(published_at)',
         'CREATE INDEX IF NOT EXISTS idx_news_featured ON news(featured)',
         'CREATE INDEX IF NOT EXISTS idx_news_slug ON news(slug)'
       ];
@@ -154,10 +149,10 @@ class News {
       let params = [];
       
       if (status !== 'all') {
-        query += ' WHERE n.status = $1 ORDER BY n.published_at DESC, n.created_at DESC';
+        query += ' WHERE n.status = $1 ORDER BY n.created_at DESC';
         params.push(status);
       } else {
-        query += ' ORDER BY n.published_at DESC, n.created_at DESC';
+        query += ' ORDER BY n.created_at DESC';
       }
 
       const result = await pool.query(query, params);
@@ -211,10 +206,6 @@ class News {
       const query = `
         UPDATE ${this.schema.tableName} 
         SET status = $1, 
-            published_at = CASE 
-              WHEN $1 = 'approved' AND published_at IS NULL THEN CURRENT_TIMESTAMP 
-              ELSE published_at 
-            END,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $2
         RETURNING *
@@ -331,7 +322,7 @@ class News {
         FROM ${this.schema.tableName} n
         LEFT JOIN users u ON n.author_id = u.id
         WHERE n.status = 'approved' AND n.featured = true
-        ORDER BY n.published_at DESC
+        ORDER BY n.created_at DESC
         LIMIT $1
       `;
 
@@ -339,21 +330,6 @@ class News {
       return result.rows;
     } catch (error) {
       console.error('❌ Error fetching featured news:', error.message);
-      throw error;
-    }
-  }
-
-  static async incrementViews(newsId) {
-    try {
-      const query = `
-        UPDATE ${this.schema.tableName} 
-        SET views = views + 1 
-        WHERE id = $1
-      `;
-      
-      await pool.query(query, [newsId]);
-    } catch (error) {
-      console.error('❌ Error incrementing views:', error.message);
       throw error;
     }
   }

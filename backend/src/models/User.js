@@ -15,6 +15,7 @@ class User {
       contact_number: 'VARCHAR(10)',
       department: 'VARCHAR(100)',
       passout_year: 'INTEGER',
+      profile_image: 'TEXT',
       role: "VARCHAR(20) DEFAULT 'alumni'",
       status: "VARCHAR(20) DEFAULT 'inactive'",
       is_approved: 'BOOLEAN DEFAULT FALSE',
@@ -121,6 +122,49 @@ class User {
       
     } catch (error) {
       console.error('❌ Error ensuring columns exist:', error.message);
+      throw error;
+    }
+  }
+
+  // Update user profile
+  static async updateProfile(userId, profileData) {
+    try {
+      const { first_name, last_name, contact_number, department, passout_year } = profileData;
+      
+      const query = `
+        UPDATE ${this.schema.tableName} 
+        SET first_name = COALESCE($1, first_name),
+            last_name = COALESCE($2, last_name),
+            contact_number = COALESCE($3, contact_number),
+            department = COALESCE($4, department),
+            passout_year = COALESCE($5, passout_year),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6
+        RETURNING *
+      `;
+
+      const result = await pool.query(query, [first_name, last_name, contact_number, department, passout_year, userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  }
+
+  // Update profile image
+  static async updateProfileImage(userId, imageUrl) {
+    try {
+      const query = `
+        UPDATE ${this.schema.tableName} 
+        SET profile_image = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+        RETURNING *
+      `;
+
+      const result = await pool.query(query, [imageUrl, userId]);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error updating profile image:', error);
       throw error;
     }
   }

@@ -160,8 +160,8 @@ const Profile = () => {
         const data = await response.json();
         setProfileData(prev => ({
           ...prev,
-          profile: {
-            ...prev.profile,
+          user: {
+            ...prev.user,
             profile_image: data.data.url
           }
         }));
@@ -621,7 +621,7 @@ const Profile = () => {
     );
   }
 
-  const { user: userData, profile, education, skills, languages, experience, projects, achievements, exams, certifications } = profileData;
+  const { user: userData, profile = {}, education, skills, languages, experience, projects, achievements, exams, certifications } = profileData;
   console.log('🔍 Destructured data:', { userData, profile });
 
   return (
@@ -639,9 +639,9 @@ const Profile = () => {
             <div className="flex items-center space-x-6">
             {/* Profile Picture */}
             <div className="relative">
-              {profile?.profile_image ? (
+              {userData?.profile_image ? (
                 <img 
-                  src={profile.profile_image} 
+                  src={userData.profile_image} 
                   alt="Profile" 
                   className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
                 />
@@ -1757,9 +1757,9 @@ const Profile = () => {
               {/* Profile Picture */}
               <div className="flex justify-center mb-6">
                 <div className="relative">
-                  {profile?.profile_image ? (
+                  {userData?.profile_image ? (
                     <img 
-                      src={profile.profile_image} 
+                      src={userData.profile_image} 
                       alt="Profile" 
                       className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
                     />

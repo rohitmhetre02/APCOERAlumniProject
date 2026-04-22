@@ -14,7 +14,8 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   XMarkIcon,
-  BuildingOfficeIcon
+  BuildingOfficeIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline';
 import ProfileDropdown from '../common/ProfileDropdown';
 
@@ -72,9 +73,11 @@ const AdminSidebar = ({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSideba
       path: '/admin/manage/news',
       icon: <NewspaperIcon className="w-5 h-5" />
     },
-    
-    
-    
+    {
+      name: 'Gallery',
+      path: '/admin/gallery',
+      icon: <PhotoIcon className="w-5 h-5" />
+    },
     {
       name: 'Messages',
       path: '/admin/messages',

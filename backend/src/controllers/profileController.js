@@ -2,7 +2,6 @@ import { pool } from '../config/database.js';
 import CloudinaryService from '../services/cloudinaryService.js';
 import multer from 'multer';
 import { 
-  Profile, 
   Education, 
   Skill, 
   Language, 
@@ -11,6 +10,7 @@ import {
   Achievement, 
   Certification 
 } from '../models/index.js';
+import User from '../models/User.js';
 
 // Configure multer for file upload
 const storage = multer.memoryStorage();
@@ -34,8 +34,8 @@ export const getProfileByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Get profile
-    let profile = await Profile.findByUserId(userId);
+    // Get user data
+    const user = await User.findById(userId);
     
     // Get all related data using models
     const [education, skills, languages, experience, projects, achievements, certifications] = await Promise.all([
@@ -52,7 +52,7 @@ export const getProfileByUserId = async (req, res) => {
       success: true,
       message: 'Profile data retrieved successfully',
       data: {
-        profile,
+        user,
         education,
         skills,
         languages,
@@ -76,13 +76,6 @@ export const getFullProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Get or create profile
-    let profile = await Profile.findByUserId(userId);
-    if (!profile) {
-      // Create empty profile
-      profile = await Profile.upsert(userId, {});
-    }
-
     // Get all related data using models
     const [education, skills, languages, experience, projects, achievements, certifications] = await Promise.all([
       Education.findByUserId(userId),
@@ -96,7 +89,7 @@ export const getFullProfile = async (req, res) => {
 
     // Get user basic info with all registration data
     const userResult = await pool.query(
-      'SELECT id, first_name, last_name, email, role, prn_number, contact_number, department, passout_year, is_approved FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, email, role, prn_number, contact_number, department, passout_year, is_approved, profile_image FROM users WHERE id = $1',
       [userId]
     );
 
@@ -104,7 +97,6 @@ export const getFullProfile = async (req, res) => {
       success: true,
       data: {
         user: userResult.rows[0],
-        profile,
         education,
         skills,
         languages,
@@ -138,18 +130,9 @@ export const updateProfile = async (req, res) => {
       );
     }
 
-    const profile = await Profile.upsert(userId, {
-      department,
-      graduation_year,
-      location,
-      contact_number,
-      bio
-    });
-
     res.json({
       success: true,
-      message: 'Profile updated successfully',
-      data: profile
+      message: 'Profile updated successfully'
     });
   } catch (error) {
     console.error('Error updating profile:', error);
@@ -176,13 +159,13 @@ export const uploadProfileImage = async (req, res) => {
     // Upload to Cloudinary
     const uploadResult = await CloudinaryService.uploadImage(req.file.buffer);
 
-    // Get current profile to delete old image
-    const currentProfile = await Profile.findByUserId(userId);
+    // Get current user to delete old image
+    const currentUser = await User.findById(userId);
 
     // Delete old image from Cloudinary if exists
-    if (currentProfile?.profile_image) {
+    if (currentUser?.profile_image) {
       try {
-        const publicId = currentProfile.profile_image.split('/').pop().split('.')[0];
+        const publicId = currentUser.profile_image.split('/').pop().split('.')[0];
         const cloudinaryPublicId = `alumni-profiles/${publicId}`;
         await CloudinaryService.deleteImage(cloudinaryPublicId);
       } catch (error) {
@@ -190,15 +173,15 @@ export const uploadProfileImage = async (req, res) => {
       }
     }
 
-    // Update profile with new image URL
-    const profile = await Profile.updateProfileImage(userId, uploadResult.url);
+    // Update user with new image URL
+    const user = await User.updateProfileImage(userId, uploadResult.url);
 
     res.json({
       success: true,
       message: 'Profile image uploaded successfully',
       data: {
         url: uploadResult.url,
-        profile
+        user
       }
     });
   } catch (error) {

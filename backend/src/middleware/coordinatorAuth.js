@@ -25,10 +25,15 @@ export const authenticateCoordinatorToken = async (req, res, next) => {
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+        // Handle both userId and id fields in token
+        const coordinatorId = decoded.userId || decoded.id;
+        console.log('Token decoded:', decoded);
+        console.log('Coordinator ID extracted:', coordinatorId);
+
         // Check if coordinator exists (allow both approved and unapproved for password reset)
         const userResult = await pool.query(
             'SELECT id, email, role, is_approved, is_first_login, department FROM users WHERE id = $1 AND role = $2',
-            [decoded.id, 'coordinator']
+            [coordinatorId, 'coordinator']
         );
 
         if (userResult.rows.length === 0) {
@@ -47,6 +52,7 @@ export const authenticateCoordinatorToken = async (req, res, next) => {
         // Add coordinator to request object
         req.user = {
             id: coordinator.id,
+            userId: coordinator.id, // Add both for compatibility
             email: coordinator.email,
             role: coordinator.role,
             is_approved: coordinator.is_approved,

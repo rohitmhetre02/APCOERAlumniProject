@@ -13,6 +13,7 @@ import newsRoutes from './routes/newsRoutes.js';
 import opportunityRoutes from './routes/opportunityRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import eventRegistrationRoutes from './routes/eventRegistrationRoutes.js';
+import galleryRoutes from './routes/galleryRoutes.js';
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/event-registrations', eventRegistrationRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
