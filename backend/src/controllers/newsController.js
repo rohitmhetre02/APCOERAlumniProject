@@ -74,10 +74,14 @@ export const getAllNews = async (req, res) => {
   try {
     const { status, category, limit = 50, offset = 0 } = req.query;
     
+    console.log('🔍 getAllNews called with:', { status, category, limit, offset });
+    
     // For public access, only show approved news
     const newsStatus = status || 'approved';
     
+    console.log('🔍 Fetching news with status:', newsStatus);
     const news = await News.getAll(newsStatus, category, parseInt(limit), parseInt(offset));
+    console.log('✅ News fetched successfully, count:', news.length);
 
     res.json({
       success: true,
@@ -91,6 +95,7 @@ export const getAllNews = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching news:', error.message);
+    console.error('❌ Full error details:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch news articles',

@@ -1,5 +1,5 @@
 // Application Accepted Email Template
-export const getApplicationAcceptedTemplate = (userName, opportunityTitle, company, opportunityDescription) => {
+const getApplicationAcceptedTemplate = (userName, opportunityTitle, company, opportunityDescription) => {
   const subject = `Application Accepted - ${opportunityTitle} at ${company}`;
   
   const html = `
@@ -136,7 +136,7 @@ export const getApplicationAcceptedTemplate = (userName, opportunityTitle, compa
 };
 
 // Application Reviewed Email Template
-export const getApplicationReviewedTemplate = (userName, opportunityTitle, company) => {
+const getApplicationReviewedTemplate = (userName, opportunityTitle, company) => {
   const subject = `Application Under Review - ${opportunityTitle} at ${company}`;
   
   const html = `
@@ -261,7 +261,7 @@ export const getApplicationReviewedTemplate = (userName, opportunityTitle, compa
 };
 
 // Application Rejected Email Template
-export const getApplicationRejectedTemplate = (userName, opportunityTitle, company) => {
+const getApplicationRejectedTemplate = (userName, opportunityTitle, company) => {
   const subject = `Application Update - ${opportunityTitle} at ${company}`;
   
   const html = `
@@ -398,7 +398,7 @@ export const getApplicationRejectedTemplate = (userName, opportunityTitle, compa
 };
 
 // Registration Pending Email Template
-export const getRegistrationPendingTemplate = (userName) => {
+const getRegistrationPendingTemplate = (userName) => {
   const subject = 'Registration Received - APCOER Alumni Portal';
   
   const html = `
@@ -529,7 +529,7 @@ export const getRegistrationPendingTemplate = (userName) => {
 };
 
 // Approval Email Template
-export const getApprovalTemplate = (userName) => {
+const getApprovalTemplate = (userName) => {
   const subject = '🎉 Profile Approved - Connect to APCOER Alumni Network Now!';
   
   const html = `
@@ -700,7 +700,7 @@ export const getApprovalTemplate = (userName) => {
 };
 
 // Alumni Credentials Email Template
-export const getAlumniCredentialsTemplate = (firstName, lastName, email, temporaryPassword) => {
+const getAlumniCredentialsTemplate = (firstName, lastName, email, temporaryPassword) => {
   const subject = 'Welcome to APCOER Alumni Network - Your Account Credentials';
   
   const html = `
@@ -841,7 +841,7 @@ export const getAlumniCredentialsTemplate = (firstName, lastName, email, tempora
 };
 
 // Coordinator Approval Email Template
-export const getCoordinatorApprovalTemplate = (firstName, lastName) => {
+const getCoordinatorApprovalTemplate = (firstName, lastName) => {
   const subject = '🎉 Your Alumni Account Has Been Approved - APCOER Alumni Network';
   
   const html = `
@@ -957,7 +957,7 @@ export const getCoordinatorApprovalTemplate = (firstName, lastName) => {
 };
 
 // Rejection Email Template
-export const getRejectionTemplate = (firstName, lastName) => {
+const getRejectionTemplate = (firstName, lastName) => {
   const subject = 'Your Alumni Registration Has Been Rejected - APCOER Alumni Network';
   
   const html = `
@@ -1051,7 +1051,7 @@ export const getRejectionTemplate = (firstName, lastName) => {
 };
 
 // Event Notification Email Template
-export const getEventNotificationTemplate = (eventData) => {
+const getEventNotificationTemplate = (eventData) => {
   const subject = `🎉 New Event: ${eventData.eventTitle}`;
   
   const html = `
@@ -1227,7 +1227,7 @@ export const getEventNotificationTemplate = (eventData) => {
 };
 
 // Event Rejection Email Template
-export const getEventRejectionTemplate = (eventData) => {
+const getEventRejectionTemplate = (eventData) => {
   const subject = `Event Rejected: ${eventData.eventTitle}`;
   
   const html = `
@@ -1326,7 +1326,7 @@ export const getEventRejectionTemplate = (eventData) => {
 };
 
 // News Notification Email Template
-export const getNewsNotificationTemplate = (news, loginUrl) => {
+const getNewsNotificationTemplate = (news, loginUrl) => {
   const subject = `New News Update: ${news.title}`;
   
   const html = `
@@ -1455,7 +1455,7 @@ export const getNewsNotificationTemplate = (news, loginUrl) => {
 };
 
 // Event Approval Email Template
-export const getEventApprovalTemplate = (eventData) => {
+const getEventApprovalTemplate = (eventData) => {
   const subject = `Event Approved: ${eventData.title}`;
   
   const html = `
@@ -1619,7 +1619,7 @@ export const getEventApprovalTemplate = (eventData) => {
 };
 
 // Opportunity Approval Email Template
-export const getOpportunityApprovalTemplate = (opportunityData) => {
+const getOpportunityApprovalTemplate = (opportunityData) => {
   const subject = `Opportunity Approved: ${opportunityData.title}`;
   
   const html = `
@@ -1776,7 +1776,7 @@ export const getOpportunityApprovalTemplate = (opportunityData) => {
 };
 
 // Opportunity Rejection Email Template
-export const getOpportunityRejectionTemplate = (opportunityData, rejectionReason) => {
+const getOpportunityRejectionTemplate = (opportunityData, rejectionReason) => {
   const subject = `Opportunity Review Update: ${opportunityData.title}`;
   
   const html = `
@@ -1927,7 +1927,7 @@ export const getOpportunityRejectionTemplate = (opportunityData, rejectionReason
 };
 
 // Alumni Notification Template for New Opportunity
-export const getAlumniOpportunityNotificationTemplate = (opportunityData) => {
+const getAlumniOpportunityNotificationTemplate = (opportunityData) => {
   const subject = `New Opportunity: ${opportunityData.title}`;
   
   const html = `
@@ -2077,7 +2077,7 @@ export const getAlumniOpportunityNotificationTemplate = (opportunityData) => {
 };
 
 // Admin Event Notification Template for Alumni and Coordinators
-export const getAdminEventNotificationTemplate = (eventData) => {
+const getAdminEventNotificationTemplate = (eventData) => {
   const subject = `New Event: ${eventData.title}`;
   
   const html = `
@@ -2248,7 +2248,7 @@ export const getAdminEventNotificationTemplate = (eventData) => {
 };
 
 // Admin Opportunity Notification Template for Alumni
-export const getAdminOpportunityNotificationTemplate = (opportunityData) => {
+const getAdminOpportunityNotificationTemplate = (opportunityData) => {
   const subject = `New Opportunity: ${opportunityData.title}`;
   
   const html = `
@@ -2446,7 +2446,290 @@ export const getAdminOpportunityNotificationTemplate = (opportunityData) => {
   return { subject, html };
 };
 
-export default {
+// OTP Email Template for Email Update
+const getOTPTemplate = (userName, otp, newEmail) => {
+  const subject = 'Email Update Verification - APCOER Alumni Portal';
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Email Update Verification</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #f4f4f4;
+        }
+        .container {
+          background-color: #ffffff;
+          padding: 30px;
+          border-radius: 10px;
+          box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+          text-align: center;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #3498db;
+        }
+        .header h1 {
+          color: #2c3e50;
+          margin: 0;
+          font-size: 28px;
+        }
+        .content {
+          padding: 20px 0;
+        }
+        .otp-container {
+          background-color: #f8f9fa;
+          padding: 30px;
+          border-radius: 8px;
+          margin: 20px 0;
+          text-align: center;
+          border-left: 4px solid #3498db;
+        }
+        .otp-code {
+          font-size: 36px;
+          font-weight: bold;
+          color: #2c3e50;
+          letter-spacing: 8px;
+          margin: 20px 0;
+          font-family: 'Courier New', monospace;
+          background-color: #ffffff;
+          padding: 15px;
+          border-radius: 5px;
+          border: 2px dashed #3498db;
+          display: inline-block;
+        }
+        .warning {
+          background-color: #fff3cd;
+          border: 1px solid #ffeaa7;
+          color: #856404;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .footer {
+          text-align: center;
+          padding-top: 20px;
+          border-top: 1px solid #eee;
+          color: #666;
+          font-size: 12px;
+        }
+        .btn {
+          display: inline-block;
+          padding: 12px 24px;
+          background-color: #3498db;
+          color: white;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 10px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🔐 Email Update Verification</h1>
+        </div>
+        
+        <div class="content">
+          <p>Dear <strong>${userName}</strong>,</p>
+          
+          <p>You have requested to update your email address to <strong>${newEmail}</strong> on the APCOER Alumni Portal.</p>
+          
+          <p>To complete this process, please use the following One-Time Password (OTP):</p>
+          
+          <div class="otp-container">
+            <p style="margin: 0; color: #666; font-size: 14px;">Your Verification Code</p>
+            <div class="otp-code">${otp}</div>
+            <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">This code will expire in 15 minutes</p>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Security Notice:</strong>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              <li>Never share this OTP with anyone</li>
+              <li>APCOER staff will never ask for your OTP</li>
+              <li>This OTP can only be used once</li>
+              <li>If you didn't request this change, please contact support immediately</li>
+            </ul>
+          </div>
+          
+          <p>If you have any questions or concerns, please contact our support team.</p>
+          
+          <p>Thank you for using APCOER Alumni Portal!</p>
+        </div>
+        
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} APCOER Alumni Portal. All rights reserved.</p>
+          <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return { subject, html };
+};
+
+// Forget Password OTP Email Template
+const getForgetPasswordOTPTemplate = (userName, otp) => {
+  const subject = 'Password Reset OTP - APCOER Alumni Portal';
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Password Reset OTP</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #f4f4f4;
+        }
+        .container {
+          background-color: #ffffff;
+          padding: 30px;
+          border-radius: 10px;
+          box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+          text-align: center;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #e74c3c;
+        }
+        .header h1 {
+          color: #2c3e50;
+          margin: 0;
+          font-size: 28px;
+        }
+        .content {
+          padding: 20px 0;
+        }
+        .otp-container {
+          background-color: #f8f9fa;
+          padding: 30px;
+          border-radius: 8px;
+          margin: 20px 0;
+          text-align: center;
+          border-left: 4px solid #e74c3c;
+        }
+        .otp-code {
+          font-size: 36px;
+          font-weight: bold;
+          color: #e74c3c;
+          letter-spacing: 8px;
+          margin: 20px 0;
+          font-family: 'Courier New', monospace;
+          background-color: #ffffff;
+          padding: 15px;
+          border-radius: 5px;
+          border: 2px dashed #e74c3c;
+          display: inline-block;
+        }
+        .warning {
+          background-color: #fff3cd;
+          border: 1px solid #ffeaa7;
+          color: #856404;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .footer {
+          text-align: center;
+          padding-top: 20px;
+          border-top: 1px solid #eee;
+          color: #666;
+          font-size: 12px;
+        }
+        .security-info {
+          background-color: #d4edda;
+          border: 1px solid #c3e6cb;
+          color: #155724;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🔑 Password Reset Request</h1>
+        </div>
+        
+        <div class="content">
+          <p>Dear <strong>${userName}</strong>,</p>
+          
+          <p>We received a request to reset your password for the APCOER Alumni Portal account associated with this email address.</p>
+          
+          <div class="security-info">
+            <strong>📍 Request Details:</strong><br>
+            • Time: ${new Date().toLocaleString()}<br>
+            • IP Address: [Hidden for security]<br>
+            • Device: Web Browser
+          </div>
+          
+          <p>To proceed with the password reset, please use the following One-Time Password (OTP):</p>
+          
+          <div class="otp-container">
+            <p style="margin: 0; color: #666; font-size: 14px;">Your Password Reset Code</p>
+            <div class="otp-code">${otp}</div>
+            <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">This code will expire in 10 minutes</p>
+          </div>
+          
+          <div class="warning">
+            <strong>⚠️ Important Security Notice:</strong>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              <li>Never share this OTP with anyone</li>
+              <li>APCOER staff will never ask for your OTP</li>
+              <li>This OTP can only be used once</li>
+              <li>If you didn't request this password reset, please contact support immediately</li>
+              <li>For your security, this link will expire after 10 minutes</li>
+            </ul>
+          </div>
+          
+          <p><strong>Next Steps:</strong></p>
+          <ol>
+            <li>Enter this OTP in the password reset form</li>
+            <li>Create your new password</li>
+            <li>Log in with your new password</li>
+          </ol>
+          
+          <p>If you have any questions or concerns, please contact our support team.</p>
+          
+          <p>Thank you for using APCOER Alumni Portal!</p>
+        </div>
+        
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} APCOER Alumni Portal. All rights reserved.</p>
+          <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  return { subject, html };
+};
+
+export {
+  getApplicationAcceptedTemplate,
+  getApplicationReviewedTemplate,
+  getApplicationRejectedTemplate,
   getRegistrationPendingTemplate,
   getApprovalTemplate,
   getAlumniCredentialsTemplate,
@@ -2460,5 +2743,8 @@ export default {
   getOpportunityRejectionTemplate,
   getAlumniOpportunityNotificationTemplate,
   getAdminEventNotificationTemplate,
-  getAdminOpportunityNotificationTemplate
+  getAdminOpportunityNotificationTemplate,
+  getOTPTemplate,
+  getForgetPasswordOTPTemplate
 };
+

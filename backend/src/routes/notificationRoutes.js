@@ -1,42 +1,32 @@
 import express from 'express';
-import { body } from 'express-validator';
+import { authenticateToken } from '../middleware/auth.js';
 import {
-  getAllNotifications,
+  getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  deleteNotification,
-  getUnreadCount
+  deleteNotification
 } from '../controllers/notificationController.js';
-import { authenticateAdmin } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
-// Apply admin authentication to all routes
-router.use(authenticateAdmin);
+// @route   GET /api/notifications
+// @desc    Get notifications for logged-in user
+// @access  Private
+router.get('/', authenticateToken, getUserNotifications);
 
-// @route   GET /api/admin/notifications
-// @desc    Get all notifications
-// @access  Admin
-router.get('/', getAllNotifications);
-
-// @route   GET /api/admin/notifications/unread-count
-// @desc    Get unread notifications count
-// @access  Admin
-router.get('/unread-count', getUnreadCount);
-
-// @route   PUT /api/admin/notifications/:id/read
+// @route   PUT /api/notifications/:id/read
 // @desc    Mark notification as read
-// @access  Admin
-router.put('/:id/read', markNotificationAsRead);
+// @access  Private
+router.put('/:id/read', authenticateToken, markNotificationAsRead);
 
-// @route   PUT /api/admin/notifications/read-all
-// @desc    Mark all notifications as read
-// @access  Admin
-router.put('/read-all', markAllNotificationsAsRead);
+// @route   PUT /api/notifications/read-all
+// @desc    Mark all notifications as read for user
+// @access  Private
+router.put('/read-all', authenticateToken, markAllNotificationsAsRead);
 
-// @route   DELETE /api/admin/notifications/:id
+// @route   DELETE /api/notifications/:id
 // @desc    Delete notification
-// @access  Admin
-router.delete('/:id', deleteNotification);
+// @access  Private
+router.delete('/:id', authenticateToken, deleteNotification);
 
 export default router;

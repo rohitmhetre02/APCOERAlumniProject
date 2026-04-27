@@ -8,7 +8,6 @@ import { ensureAdminExists } from './src/middleware/adminMiddleware.js';
 import { ensureCoordinatorExists } from './src/middleware/coordinatorMiddleware.js';
 import { initializeSocket } from './src/config/socket.js';
 import User from './src/models/User.js';
-import Notification from './src/models/Notification.js';
 import Event from './src/models/Event.js';
 import News from './src/models/News.js';
 import Opportunity from './src/models/Opportunity.js';
@@ -30,68 +29,32 @@ const startServer = async () => {
     await connectDB();
     
     // Initialize database tables and run migrations
-    
     await User.init();
-    
-    // Initialize profile tables
     await initializeAllTables();
-    
-    // Initialize notification system
-    
-    await Notification.init();
-    
-    // Initialize Event system
-  
     await Event.createTable();
-    
-    // Initialize News system
-    
     await News.createTable();
-    
-    // Initialize Opportunity system
-    
     await Opportunity.createTable();
-    
-    // Initialize Application system
-    
     await Application.createTable();
-    
-    // Initialize Event Registration system
-    
     await EventRegistration.createTable();
     
     // Initialize Socket.IO
-   
-    initializeSocket(server);
+    const io = initializeSocket(server);
+    app.set('io', io);
     
     // Test email configuration
-   
-    const emailConfigOk = await testEmailConfig();
-    if (emailConfigOk) {
-     
-    } else {
-      console.log('⚠️  Email service not configured properly');
-    }
+    await testEmailConfig();
     
-    // Ensure admin user exists
-   
+    // Ensure admin and coordinator users exist
     await ensureAdminExists();
-    
-    // Ensure coordinator user exists
-    
     await ensureCoordinatorExists();
-    
-    // Start notification cleanup
-   
-    const { scheduleNotificationCleanup } = await import('./src/controllers/notificationController.js');
-    scheduleNotificationCleanup();
     
     // Start server
     server.listen(PORT, () => {
-     
+      console.log(` Server running on port ${PORT}`);
+      console.log(` API URL: http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
+    console.error(' Failed to start server:', error.message);
     process.exit(1);
   }
 };

@@ -27,9 +27,7 @@ export const initializeAllTables = async () => {
       Gallery.createTable()
     ]);
     
-    // Run migrations for specific tables
    
-    await Experience.migrateEmploymentType();
     
    
   } catch (error) {

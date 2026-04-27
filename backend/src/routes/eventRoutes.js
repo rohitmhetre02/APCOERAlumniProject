@@ -10,6 +10,7 @@ import {
   approveEvent,
   rejectEvent,
   deleteEvent,
+  updateEvent,
   getEventRegistrations,
   getMyEventRegistrations,
   acceptRegistration,
@@ -115,6 +116,11 @@ router.get('/pending', authenticateAdmin, getPendingEvents);
 // @desc    Get event by ID
 // @access  Authenticated users (alumni, admin, coordinator)
 router.get('/:id', authenticateUser, getEventById);
+
+// @route   PUT /api/events/:id
+// @desc    Update event
+// @access  Event creator only
+router.put('/:id', authenticateUser, updateEvent);
 
 // Protected routes (admin or coordinator)
 router.use(authenticateAdminOrCoordinator); // This middleware will handle both admin and coordinator

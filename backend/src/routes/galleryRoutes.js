@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllImages, uploadImage, updateImage, deleteImage, upload } from '../controllers/galleryController.js';
+import { getAllImages, uploadImage, deleteImage, upload } from '../controllers/galleryController.js';
 import { authenticateAdmin, authenticateUser } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
@@ -7,13 +7,10 @@ const router = express.Router();
 // Get all images - accessible to all authenticated users (admin, coordinator, alumni)
 router.get('/', authenticateUser, getAllImages);
 
-// Upload image - admin only
-router.post('/upload', authenticateAdmin, upload.single('image'), uploadImage);
+// Upload image - admin and coordinator
+router.post('/upload', authenticateUser, upload.single('image'), uploadImage);
 
-// Update image - admin only
-router.put('/:id', authenticateAdmin, updateImage);
-
-// Delete image - admin only
-router.delete('/:id', authenticateAdmin, deleteImage);
+// Delete image - admin and coordinator
+router.delete('/:id', authenticateUser, deleteImage);
 
 export default router;

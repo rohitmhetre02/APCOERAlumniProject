@@ -57,7 +57,15 @@ export const getAllImages = async (req, res) => {
 export const uploadImage = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { title, description } = req.body;
+    const userRole = req.user.role;
+
+    // Check if user is admin or coordinator
+    if (userRole !== 'admin' && userRole !== 'coordinator') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin and coordinator can upload images'
+      });
+    }
 
     if (!req.file) {
       return res.status(400).json({
@@ -71,8 +79,6 @@ export const uploadImage = async (req, res) => {
 
     // Save to database
     const image = await Gallery.create({
-      title: title || 'Gallery Image',
-      description: description || '',
       image_url: uploadResult.url,
       uploaded_by: userId
     });
@@ -92,40 +98,20 @@ export const uploadImage = async (req, res) => {
   }
 };
 
-// Update image details
-export const updateImage = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, description } = req.body;
-
-    const image = await Gallery.update(id, { title, description });
-
-    if (!image) {
-      return res.status(404).json({
-        success: false,
-        message: 'Image not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Image updated successfully',
-      data: image
-    });
-  } catch (error) {
-    console.error('Error updating image:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update image',
-      error: error.message
-    });
-  }
-};
 
 // Delete image
 export const deleteImage = async (req, res) => {
   try {
     const { id } = req.params;
+    const userRole = req.user.role;
+
+    // Check if user is admin or coordinator
+    if (userRole !== 'admin' && userRole !== 'coordinator') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admin and coordinator can delete images'
+      });
+    }
 
     // Get image info before deletion
     const image = await Gallery.findById(id);

@@ -6,14 +6,11 @@ import { pool } from '../config/database.js';
 // Ensure coordinator user exists
 export const ensureCoordinatorExists = async () => {
   try {
-    console.log('🚀 Starting coordinator setup process...');
-    
     // Check if coordinator user exists
     const coordinatorEmail = 'coordinator@apcoer.edu';
     const existingCoordinator = await User.findByEmail(coordinatorEmail);
     
     if (existingCoordinator) {
-      console.log('✅ Coordinator user already exists:', coordinatorEmail);
       return existingCoordinator;
     }
     
@@ -32,16 +29,11 @@ export const ensureCoordinatorExists = async () => {
     };
     
     const newCoordinator = await User.create(coordinatorData);
-    
-    console.log('✅ Coordinator user created successfully:', coordinatorEmail);
-    console.log('📋 Coordinator credentials:');
-    console.log('   Email:', coordinatorEmail);
-    console.log('   Password: coordinator123');
-    console.log('   Role: coordinator');
+    console.log(' Coordinator user created successfully:', coordinatorEmail);
     
     return newCoordinator;
   } catch (error) {
-    console.error('❌ Error setting up coordinator:', error.message);
+    console.error(' Error setting up coordinator:', error.message);
     throw error;
   }
 };

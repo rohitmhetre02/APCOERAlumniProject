@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   UserIcon,
@@ -16,7 +17,9 @@ import {
   UserPlusIcon,
   XMarkIcon,
   PlayIcon,
-  PauseIcon
+  PauseIcon,
+  ChatBubbleLeftRightIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -27,6 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const AlumniList = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
@@ -42,6 +46,7 @@ const AlumniList = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState(null); // Track which dropdown is open
 
   // Form data for single alumni addition
   const [singleAlumni, setSingleAlumni] = useState({
@@ -203,6 +208,28 @@ const AlumniList = () => {
     setActionType(type);
     setShowActionModal(true);
   };
+
+  const handleMessageAlumni = (alumnus) => {
+    // Navigate to messages page with alumni ID
+    const messagesPath = user?.role === 'coordinator' ? '/coordinator/messages' : '/admin/messages';
+    navigate(`${messagesPath}`, { state: { selectedAlumniId: alumnus.id } });
+  };
+
+  const toggleDropdown = (id) => {
+    setActiveDropdown(activeDropdown === id ? null : id);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (activeDropdown && !event.target.closest('.relative')) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeDropdown]);
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
@@ -469,6 +496,19 @@ const AlumniList = () => {
       )
     },
     {
+      header: 'View',
+      key: 'view',
+      accessor: (row) => (
+        <button
+          onClick={() => openAlumniDetail(row)}
+          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+          title="View Details"
+        >
+          <EyeIcon className="w-5 h-5" />
+        </button>
+      )
+    },
+    {
       header: 'Registered',
       key: 'created_at',
       accessor: (row) => (
@@ -481,40 +521,66 @@ const AlumniList = () => {
       header: 'Actions',
       key: 'actions',
       accessor: (row) => (
-        <div className="flex items-center gap-1">
+        <div className="relative">
           <button
-            onClick={() => openAlumniDetail(row)}
-            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-            title="View Details"
+            onClick={() => toggleDropdown(row.id)}
+            className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+            title="Actions"
           >
-            <EyeIcon className="w-4 h-4" />
+            <EllipsisVerticalIcon className="w-5 h-5" />
           </button>
-          {(user?.role === 'admin' || user?.role === 'coordinator') && (
-            <button
-              onClick={() => openEditModal(row)}
-              className="p-1 text-gray-600 hover:bg-gray-50 rounded"
-              title="Edit Alumni"
-            >
-              <PencilIcon className="w-4 h-4" />
-            </button>
-          )}
-          {user?.role === 'admin' && (
-            <>
-              <button
-                onClick={() => openActionModal(row, 'suspend')}
-                className="p-1 text-orange-600 hover:bg-orange-50 rounded"
-                title="Suspend Alumni"
-              >
-                <PauseIcon className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => openActionModal(row, 'delete')}
-                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                title="Delete Alumni"
-              >
-                <TrashIcon className="w-4 h-4" />
-              </button>
-            </>
+          
+          {activeDropdown === row.id && (
+            <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+              <div className="py-1">
+                {(user?.role === 'admin' || user?.role === 'coordinator') && (
+                  <button
+                    onClick={() => {
+                      openEditModal(row);
+                      setActiveDropdown(null);
+                    }}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                  >
+                    <PencilIcon className="w-4 h-4 mr-2" />
+                    Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    handleMessageAlumni(row);
+                    setActiveDropdown(null);
+                  }}
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                >
+                  <ChatBubbleLeftRightIcon className="w-4 h-4 mr-2" />
+                  Message
+                </button>
+                {user?.role === 'admin' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        openActionModal(row, 'suspend');
+                        setActiveDropdown(null);
+                      }}
+                      className="flex items-center px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 w-full text-left"
+                    >
+                      <PauseIcon className="w-4 h-4 mr-2" />
+                      Suspend
+                    </button>
+                    <button
+                      onClick={() => {
+                        openActionModal(row, 'delete');
+                        setActiveDropdown(null);
+                      }}
+                      className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-2" />
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )

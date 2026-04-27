@@ -26,9 +26,9 @@ class Application {
       `;
 
       await pool.query(createTableQuery);
-      console.log(`✅ ${this.schema.tableName} table created successfully`);
+      
     } catch (error) {
-      console.error(`❌ Error creating ${this.schema.tableName} table:`, error.message);
+      console.error(` Error creating ${this.schema.tableName} table:`, error.message);
       throw error;
     }
   }
@@ -56,16 +56,16 @@ class Application {
 
       return result.rows[0];
     } catch (error) {
-      console.error('❌ Error creating application:', error.message);
-      console.error('❌ Application data:', applicationData);
-      console.error('❌ Full error:', error);
+      console.error(' Error creating application:', error.message);
+      console.error(' Application data:', applicationData);
+      console.error(' Full error:', error);
       throw error;
     }
   }
 
   static async getByUserId(userId) {
     try {
-      console.log('🔧 Application.getByUserId called with userId:', userId);
+      
       
       const query = `
         SELECT a.*, 
@@ -84,25 +84,24 @@ class Application {
         ORDER BY a.applied_date DESC
       `;
 
-      console.log('🔧 Executing query:', query);
+    
       const result = await pool.query(query, [userId]);
-      console.log('🔧 Query result:', result.rows.length, 'applications found');
+     
       
       if (result.rows.length > 0) {
-        console.log('🔧 Sample application data:', result.rows[0]);
+       
       }
       
       return result.rows;
     } catch (error) {
-      console.error('❌ Error fetching applications by user ID:', error);
+      console.error(' Error fetching applications by user ID:', error);
       throw error;
     }
   }
 
   static async getByOpportunityId(opportunityId) {
     try {
-      console.log(`🔧 Application.getByOpportunityId START called with opportunityId: ${opportunityId}`);
-      console.log(`🔧 Application model tableName: ${this.schema.tableName}`);
+  
       
       // First try with LEFT JOIN to get applications even if user data is missing
       const query = `
@@ -120,17 +119,12 @@ class Application {
         ORDER BY a.applied_date DESC
       `;
 
-      console.log(`🔧 Executing query with LEFT JOIN: ${query}`);
-      console.log(`🔧 With parameter: ${opportunityId}`);
-
+    
       const result = await pool.query(query, [opportunityId]);
-      console.log(`🔧 Query result: ${result.rows.length} rows found`);
-      console.log(`🔧 Raw query result rows:`, result.rows);
-      console.log(`🔧 First row keys:`, result.rows.length > 0 ? Object.keys(result.rows[0]) : 'No rows');
+      
       
       if (result.rows.length > 0) {
-        console.log(`🔧 Sample application data:`, result.rows[0]);
-        console.log(`🔧 Available fields in application:`, Object.keys(result.rows[0] || {}));
+       
         
         // Format the data to handle missing user information
         const formattedApplications = result.rows.map(app => ({
@@ -143,9 +137,7 @@ class Application {
           contact_number: app.contact_number || 'N/A'
         }));
         
-        console.log(`🔧 Formatted applications:`, formattedApplications[0]);
-        console.log(`🔧 Formatted application keys:`, Object.keys(formattedApplications[0] || {}));
-        console.log(`🔧 Returning formatted applications count:`, formattedApplications.length);
+      
         return formattedApplications;
       } else {
         console.log(`🔧 No applications found. Let's check if the table has any data...`);
@@ -195,14 +187,14 @@ class Application {
             })
           );
           
-          console.log(`🔧 Applications with user data:`, applicationsWithUserData.length);
+         
           return applicationsWithUserData;
         }
       }
       
       return result.rows;
     } catch (error) {
-      console.error('❌ Error fetching applications by opportunity ID:', error);
+      console.error(' Error fetching applications by opportunity ID:', error);
       throw error;
     }
   }
@@ -219,7 +211,7 @@ class Application {
       const result = await pool.query(query, [status, id]);
       return result.rows[0];
     } catch (error) {
-      console.error('❌ Error updating application status:', error);
+      console.error(' Error updating application status:', error);
       throw error;
     }
   }
@@ -234,8 +226,8 @@ class Application {
       const result = await pool.query(query, [userId, opportunityId]);
       return result.rows[0];
     } catch (error) {
-      console.error('❌ Error checking existing application:', error);
-      console.error('❌ Query params:', { userId, opportunityId });
+      console.error(' Error checking existing application:', error);
+      console.error(' Query params:', { userId, opportunityId });
       throw error;
     }
   }
@@ -256,7 +248,7 @@ class Application {
       const result = await pool.query(query);
       return result.rows[0];
     } catch (error) {
-      console.error('❌ Error fetching application stats:', error);
+      console.error(' Error fetching application stats:', error);
       throw error;
     }
   }

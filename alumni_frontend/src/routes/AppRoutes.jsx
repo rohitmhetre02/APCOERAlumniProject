@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AuthWrapper from '../context/AuthWrapper';
 import PrivateRoute from './PrivateRoute';
 import Login from '../pages/Login';
@@ -28,6 +28,70 @@ import Settings from '../pages/Settings';
 import NotificationsPage from '../pages/NotificationsPage';
 import ApplicationRequests from '../pages/ApplicationRequests';
 import EventRegistrations from '../pages/EventRegistrations';
+
+// Catch All Route Component
+const CatchAllRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  console.log('🔍 Alumni CatchAllRoute check:', {
+    isAuthenticated,
+    loading,
+    path: location.pathname
+  });
+
+  // If still loading, show loader
+  if (loading) {
+    console.log('⏳ Alumni CatchAllRoute: Authentication loading, showing loader');
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        backgroundColor: '#f9fafb'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '4px solid #e5e7eb',
+            borderTop: '4px solid #3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If authenticated and on a valid route, stay on current page
+  if (isAuthenticated) {
+    // Check if current path is a valid alumni route
+    const isValidAlumniRoute = location.pathname.startsWith('/dashboard') || 
+                              location.pathname.startsWith('/my-') ||
+                              location.pathname === '/messages' ||
+                              location.pathname === '/alumni-directory' ||
+                              location.pathname === '/opportunities' ||
+                              location.pathname === '/events' ||
+                              location.pathname === '/news' ||
+                              location.pathname === '/gallery' ||
+                              location.pathname.startsWith('/opportunity/') ||
+                              location.pathname.startsWith('/event/') ||
+                              location.pathname.startsWith('/news/');
+    
+    if (isValidAlumniRoute) {
+      console.log('✅ Alumni CatchAllRoute: Valid authenticated route, staying on current page');
+      return <Navigate to={location.pathname} replace />;
+    }
+  }
+
+  // If not authenticated or invalid route, redirect to login
+  console.log('❌ Alumni CatchAllRoute: Not authenticated or invalid route, redirecting to login');
+  return <Navigate to="/" replace />;
+};
 
 const AppRoutes = () => {
   return (
@@ -148,7 +212,7 @@ const AppRoutes = () => {
         </Route>
         
         {/* Fallback Route */}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<CatchAllRoute />} />
       </Routes>
     </AuthWrapper>
   );

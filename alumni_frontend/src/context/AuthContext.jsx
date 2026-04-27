@@ -57,7 +57,8 @@ export const AuthProvider = ({ children, navigate }) => {
         setIsAuthenticated(false);
         setUser(null);
         
-        navigate('/');
+        // Don't navigate here - let the routing system handle it
+        console.log('Token expired, cleared storage');
       }
     } else {
       // No token exists

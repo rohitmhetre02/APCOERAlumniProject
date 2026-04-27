@@ -393,13 +393,21 @@ class User {
     const values = [];
     let paramIndex = 1;
 
-    Object.keys(updateData).forEach(field => {
+    // Process each field
+    for (const field of Object.keys(updateData)) {
       if (allowedFields.includes(field)) {
-        updates.push(`${field} = $${paramIndex}`);
-        values.push(updateData[field]);
+        if (field === 'password') {
+          // Hash the password before updating
+          const hashedPassword = await bcrypt.hash(updateData[field], 10);
+          updates.push(`${field} = $${paramIndex}`);
+          values.push(hashedPassword);
+        } else {
+          updates.push(`${field} = $${paramIndex}`);
+          values.push(updateData[field]);
+        }
         paramIndex++;
       }
-    });
+    }
 
     if (updates.length === 0) {
       throw new Error('No valid fields to update');
@@ -412,7 +420,7 @@ class User {
       UPDATE ${this.schema.tableName}
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, first_name, last_name, email, role, is_approved, is_first_login, status, updated_at
+      RETURNING id, first_name, last_name, email, password, role, is_approved, is_first_login, status, updated_at
     `;
 
     const result = await pool.query(query, values);
@@ -475,11 +483,69 @@ class User {
     };
   }
 
-  // Delete user
+  // Delete user with cascade deletion of related data
   static async delete(id) {
-    const query = `DELETE FROM ${this.schema.tableName} WHERE id = $1 RETURNING id`;
-    const result = await pool.query(query, [id]);
-    return result.rows.length > 0;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      console.log('🗑️ Starting cascade deletion for user:', id);
+      
+      // Delete related data in correct order to respect foreign key constraints
+      
+      // 1. Delete event registrations
+      const eventRegistrationsResult = await client.query(
+        'DELETE FROM event_registrations WHERE user_id = $1 RETURNING id',
+        [id]
+      );
+      console.log('📅 Deleted event registrations:', eventRegistrationsResult.rowCount);
+      
+      // 2. Delete job applications
+      const applicationsResult = await client.query(
+        'DELETE FROM applications WHERE user_id = $1 RETURNING id',
+        [id]
+      );
+      console.log('💼 Deleted applications:', applicationsResult.rowCount);
+      
+      // 3. Delete gallery uploads
+      const galleryResult = await client.query(
+        'DELETE FROM gallery WHERE user_id = $1 RETURNING id',
+        [id]
+      );
+      console.log('🖼️ Deleted gallery items:', galleryResult.rowCount);
+      
+      // 4. Delete experience records
+      const experienceResult = await client.query(
+        'DELETE FROM experience WHERE user_id = $1 RETURNING id',
+        [id]
+      );
+      console.log('💼 Deleted experience records:', experienceResult.rowCount);
+      
+      // 5. Delete notifications
+      const notificationsResult = await client.query(
+        'DELETE FROM notifications WHERE user_id = $1 RETURNING id',
+        [id]
+      );
+      console.log('🔔 Deleted notifications:', notificationsResult.rowCount);
+      
+      // 6. Finally delete the user
+      const userResult = await client.query(
+        `DELETE FROM ${this.schema.tableName} WHERE id = $1 RETURNING id`,
+        [id]
+      );
+      
+      console.log('👤 Deleted user:', userResult.rowCount > 0 ? 'success' : 'failed');
+      
+      await client.query('COMMIT');
+      return userResult.rowCount > 0;
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('❌ Error during cascade deletion:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   // Update approval status

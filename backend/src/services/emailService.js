@@ -140,10 +140,8 @@ export const testEmailConfig = async () => {
   try {
     const transporter = createTransporter();
     await transporter.verify();
-    console.log('✅ Email server is ready to send messages');
     return true;
   } catch (error) {
-    console.error('❌ Email configuration test failed:', error.message);
     return false;
   }
 };

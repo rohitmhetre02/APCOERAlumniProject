@@ -434,11 +434,11 @@ export const deleteLanguage = async (req, res) => {
 export const addExperience = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { role, company, start_date, end_date, location, description } = req.body;
+    const { role, company, start_date, end_date, location, description, employment_type } = req.body;
 
     const result = await pool.query(
-      'INSERT INTO experience (user_id, role, company, start_date, end_date, location, description, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [userId, role, company, start_date, end_date, location, description, new Date(), new Date()]
+      'INSERT INTO experience (user_id, role, company, start_date, end_date, location, description, employment_type, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [userId, role, company, start_date, end_date, location, description, employment_type, new Date(), new Date()]
     );
 
     res.json({
@@ -460,11 +460,11 @@ export const updateExperience = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { role, company, start_date, end_date, location, description } = req.body;
+    const { role, company, start_date, end_date, location, description, employment_type } = req.body;
 
     const result = await pool.query(
-      'UPDATE experience SET role = $1, company = $2, start_date = $3, end_date = $4, location = $5, description = $6, updated_at = $7 WHERE id = $8 AND user_id = $9 RETURNING *',
-      [role, company, start_date, end_date, location, description, new Date(), id, userId]
+      'UPDATE experience SET role = $1, company = $2, start_date = $3, end_date = $4, location = $5, description = $6, employment_type = $7, updated_at = $8 WHERE id = $9 AND user_id = $10 RETURNING *',
+      [role, company, start_date, end_date, location, description, employment_type, new Date(), id, userId]
     );
 
     if (result.rows.length === 0) {

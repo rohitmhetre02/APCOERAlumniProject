@@ -19,6 +19,7 @@ import {
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import Modal from '../components/ui/Modal';
 
 const MyPosts = () => {
   const [opportunities, setOpportunities] = useState([]);
@@ -28,6 +29,44 @@ const MyPosts = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'events' or 'opportunities'
   const navigate = useNavigate();
+  
+  // Edit modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingOpportunity, setEditingOpportunity] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    company: '',
+    type: '',
+    location: '',
+    salary_range: '',
+    experience_range: '',
+    deadline: '',
+    skills: '',
+    description: ''
+  });
+  const [success, setSuccess] = useState('');
+
+  // Event edit modal states
+  const [showEventEditModal, setShowEventEditModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [eventFormData, setEventFormData] = useState({
+    title: '',
+    description: '',
+    event_date: '',
+    event_time: '',
+    location: '',
+    event_mode: 'offline',
+    capacity: '',
+    event_type: 'Workshop',
+    custom_event_type: '',
+    image_url: ''
+  });
+
+  // View modal states
+  const [showEventViewModal, setShowEventViewModal] = useState(false);
+  const [showOpportunityViewModal, setShowOpportunityViewModal] = useState(false);
+  const [viewingEvent, setViewingEvent] = useState(null);
+  const [viewingOpportunity, setViewingOpportunity] = useState(null);
   
   // Content counts
   const [contentCounts, setContentCounts] = useState({
@@ -66,8 +105,7 @@ const MyPosts = () => {
       setLoading(true);
       const token = localStorage.getItem('alumni_token');
       
-      console.log('🔧 Fetching my posts...');
-      console.log('🔧 Token available:', !!token);
+      
       
       if (!token) {
         setError('Please login to view your posts');
@@ -76,7 +114,7 @@ const MyPosts = () => {
       }
 
       // Fetch both opportunities and events
-      console.log('🔧 Fetching opportunities and events...');
+      
       const [opportunitiesResponse, eventsResponse] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_URL}/opportunities/my-opportunities`, {
           headers: {
@@ -92,8 +130,7 @@ const MyPosts = () => {
         })
       ]);
 
-      console.log('🔧 Opportunities response status:', opportunitiesResponse.status);
-      console.log('🔧 Events response status:', eventsResponse.status);
+     
 
       if (!opportunitiesResponse.ok) throw new Error('Failed to fetch your opportunities');
       if (!eventsResponse.ok) throw new Error('Failed to fetch your events');
@@ -101,15 +138,12 @@ const MyPosts = () => {
       const opportunitiesData = await opportunitiesResponse.json();
       const eventsData = await eventsResponse.json();
       
-      console.log('🔧 Opportunities data:', opportunitiesData);
-      console.log('🔧 Events data:', eventsData);
+      
       
       const opportunities = opportunitiesData.data || [];
       const events = eventsData.data || [];
       
-      console.log('🔧 Found opportunities:', opportunities.length);
-      console.log('🔧 Found events:', events.length);
-      
+     
       setOpportunities(opportunities);
       setEvents(events);
       
@@ -161,7 +195,7 @@ const MyPosts = () => {
       const data = await response.json();
       setRegistrations(data.data || []);
     } catch (error) {
-      console.error('❌ Error fetching registrations:', error);
+      console.error(' Error fetching registrations:', error);
     } finally {
       setModalLoading(false);
     }
@@ -202,12 +236,198 @@ const MyPosts = () => {
     fetchOpportunityApplications(opportunity.id);
   };
 
-  const handleEditOpportunity = (opportunityId) => {
-    navigate(`/dashboard/opportunities/edit/${opportunityId}`);
+  const handleEditOpportunity = (opportunity) => {
+    setEditingOpportunity(opportunity);
+    setFormData({
+      title: opportunity.title,
+      company: opportunity.company,
+      type: opportunity.type,
+      location: opportunity.location,
+      salary_range: opportunity.salary_range,
+      experience_range: opportunity.experience_range,
+      deadline: opportunity.deadline ? new Date(opportunity.deadline).toISOString().split('T')[0] : '',
+      skills: opportunity.skills ? opportunity.skills.join(', ') : '',
+      description: opportunity.description
+    });
+    setShowEditModal(true);
+    setError('');
+    setSuccess('');
   };
 
-  const handleEditEvent = (eventId) => {
-    navigate(`/dashboard/events/edit/${eventId}`);
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+    setEventFormData({
+      title: event.title,
+      description: event.description,
+      event_date: event.event_date ? new Date(event.event_date).toISOString().split('T')[0] : '',
+      event_time: event.event_time || '',
+      location: event.location || '',
+      event_mode: event.event_mode || 'offline',
+      capacity: event.capacity?.toString() || '',
+      event_type: event.event_type || 'Workshop',
+      custom_event_type: event.custom_event_type || '',
+      image_url: event.image_url || ''
+    });
+    setShowEventEditModal(true);
+    setError('');
+    setSuccess('');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleEventInputChange = (e) => {
+    const { name, value } = e.target;
+    setEventFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleUpdateOpportunity = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('alumni_token');
+      
+      const opportunityData = {
+        ...formData,
+        skills: formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill)
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/opportunities/${editingOpportunity.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(opportunityData)
+      });
+
+      if (!response.ok) throw new Error('Failed to update opportunity');
+
+      const data = await response.json();
+      setSuccess(data.message);
+      setShowEditModal(false);
+      setEditingOpportunity(null);
+      resetForm();
+      fetchMyPosts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      company: '',
+      type: '',
+      location: '',
+      salary_range: '',
+      experience_range: '',
+      deadline: '',
+      skills: '',
+      description: ''
+    });
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingOpportunity(null);
+    resetForm();
+    setError('');
+    setSuccess('');
+  };
+
+  const handleUpdateEvent = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('alumni_token');
+      
+      const eventData = {
+        ...eventFormData,
+        capacity: parseInt(eventFormData.capacity) || null
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${editingEvent.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventData)
+      });
+
+      if (!response.ok) throw new Error('Failed to update event');
+
+      const data = await response.json();
+      setSuccess(data.message);
+      setShowEventEditModal(false);
+      setEditingEvent(null);
+      resetEventForm();
+      fetchMyPosts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetEventForm = () => {
+    setEventFormData({
+      title: '',
+      description: '',
+      event_date: '',
+      event_time: '',
+      location: '',
+      event_mode: 'offline',
+      capacity: '',
+      event_type: 'Workshop',
+      custom_event_type: '',
+      image_url: ''
+    });
+  };
+
+  const closeEventEditModal = () => {
+    setShowEventEditModal(false);
+    setEditingEvent(null);
+    resetEventForm();
+    setError('');
+    setSuccess('');
+  };
+
+  const handleViewEvent = (event) => {
+    setViewingEvent(event);
+    setShowEventViewModal(true);
+  };
+
+  const handleViewOpportunity = (opportunity) => {
+    setViewingOpportunity(opportunity);
+    setShowOpportunityViewModal(true);
+  };
+
+  const closeEventViewModal = () => {
+    setShowEventViewModal(false);
+    setViewingEvent(null);
+  };
+
+  const closeOpportunityViewModal = () => {
+    setShowOpportunityViewModal(false);
+    setViewingOpportunity(null);
   };
 
   const handleDeleteOpportunity = async (opportunityId) => {
@@ -602,7 +822,14 @@ const MyPosts = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
                             <button
-                              onClick={() => handleEditEvent(event.id)}
+                              onClick={() => handleViewEvent(event)}
+                              className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
+                              title="View"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEditEvent(event)}
                               className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
                               title="Edit"
                             >
@@ -688,7 +915,14 @@ const MyPosts = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
                             <button
-                              onClick={() => handleEditOpportunity(opportunity.id)}
+                              onClick={() => handleViewOpportunity(opportunity)}
+                              className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
+                              title="View"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEditOpportunity(opportunity)}
                               className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
                               title="Edit"
                             >
@@ -769,7 +1003,14 @@ const MyPosts = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleEditEvent(event.id)}
+                          onClick={() => handleViewEvent(event)}
+                          className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
+                          title="View"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditEvent(event)}
                           className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
                           title="Edit"
                         >
@@ -853,7 +1094,14 @@ const MyPosts = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleEditOpportunity(opportunity.id)}
+                          onClick={() => handleViewOpportunity(opportunity)}
+                          className="p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
+                          title="View"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEditOpportunity(opportunity)}
                           className="p-2 text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
                           title="Edit"
                         >
@@ -1099,6 +1347,519 @@ const MyPosts = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Opportunity Modal */}
+      <Modal 
+        isOpen={showEditModal}
+        onClose={closeEditModal}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Edit Opportunity
+              </h2>
+              <Button variant="outline" size="sm" onClick={closeEditModal}>
+                <XMarkIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-600">{success}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateOpportunity} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Job Title *</label>
+                  <Input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Company *</label>
+                  <Input
+                    type="text"
+                    name="company"
+                    value={formData.company}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Job Type *</label>
+                  <select
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select Type</option>
+                    <option value="Full-time">Full-time</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="Contract">Contract</option>
+                    <option value="Internship">Internship</option>
+                    <option value="Remote">Remote</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location *</label>
+                  <Input
+                    type="text"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    placeholder="City, State or Remote"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Salary Range</label>
+                  <Input
+                    type="text"
+                    name="salary_range"
+                    value={formData.salary_range}
+                    onChange={handleInputChange}
+                    placeholder="e.g., $50,000 - $70,000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Experience Range</label>
+                  <Input
+                    type="text"
+                    name="experience_range"
+                    value={formData.experience_range}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 2-5 years"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Application Deadline</label>
+                <Input
+                  type="date"
+                  name="deadline"
+                  value={formData.deadline}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Skills Required</label>
+                <Input
+                  type="text"
+                  name="skills"
+                  value={formData.skills}
+                  onChange={handleInputChange}
+                  placeholder="e.g., JavaScript, React, Node.js (comma separated)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Job Description *</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={closeEditModal}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Updating...' : 'Update Opportunity'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+
+      {/* Edit Event Modal */}
+      <Modal 
+        isOpen={showEventEditModal}
+        onClose={closeEventEditModal}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Edit Event
+              </h2>
+              <Button variant="outline" size="sm" onClick={closeEventEditModal}>
+                <XMarkIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-600">{success}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateEvent} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Event Title *</label>
+                <Input
+                  type="text"
+                  name="title"
+                  value={eventFormData.title}
+                  onChange={handleEventInputChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Event Description *</label>
+                <textarea
+                  name="description"
+                  value={eventFormData.description}
+                  onChange={handleEventInputChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Event Date *</label>
+                  <Input
+                    type="date"
+                    name="event_date"
+                    value={eventFormData.event_date}
+                    onChange={handleEventInputChange}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Event Time *</label>
+                  <Input
+                    type="time"
+                    name="event_time"
+                    value={eventFormData.event_time}
+                    onChange={handleEventInputChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Location *</label>
+                <Input
+                  type="text"
+                  name="location"
+                  value={eventFormData.location}
+                  onChange={handleEventInputChange}
+                  placeholder="Event venue or address"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Event Mode *</label>
+                  <select
+                    name="event_mode"
+                    value={eventFormData.event_mode}
+                    onChange={handleEventInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="offline">Offline</option>
+                    <option value="online">Online</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Capacity</label>
+                  <Input
+                    type="number"
+                    name="capacity"
+                    value={eventFormData.capacity}
+                    onChange={handleEventInputChange}
+                    placeholder="Maximum attendees"
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Event Type *</label>
+                  <select
+                    name="event_type"
+                    value={eventFormData.event_type}
+                    onChange={handleEventInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select Type</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Seminar">Seminar</option>
+                    <option value="Conference">Conference</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Webinar">Webinar</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Custom Event Type</label>
+                  <Input
+                    type="text"
+                    name="custom_event_type"
+                    value={eventFormData.custom_event_type}
+                    onChange={handleEventInputChange}
+                    placeholder="Specify if 'Other' selected"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Event Image URL</label>
+                <Input
+                  type="url"
+                  name="image_url"
+                  value={eventFormData.image_url}
+                  onChange={handleEventInputChange}
+                  placeholder="https://example.com/event-image.jpg"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={closeEventEditModal}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Updating...' : 'Update Event'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+
+      {/* View Event Modal */}
+      <Modal 
+        isOpen={showEventViewModal}
+        onClose={closeEventViewModal}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Event Details</h2>
+              <Button variant="outline" size="sm" onClick={closeEventViewModal}>
+                <XMarkIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {viewingEvent && (
+              <div className="space-y-4">
+                {/* Event Header */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{viewingEvent.title}</h3>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      viewingEvent.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      viewingEvent.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {viewingEvent.status?.charAt(0).toUpperCase() + viewingEvent.status?.slice(1)}
+                    </span>
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                      {viewingEvent.event_type}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Event Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Date & Time</label>
+                      <p className="text-sm text-gray-900">
+                        {new Date(viewingEvent.event_date).toLocaleDateString()} at {viewingEvent.event_time}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Location</label>
+                      <p className="text-sm text-gray-900">{viewingEvent.location}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Event Mode</label>
+                      <p className="text-sm text-gray-900 capitalize">{viewingEvent.event_mode}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Capacity</label>
+                      <p className="text-sm text-gray-900">
+                        {viewingEvent.registrations_count || 0}/{viewingEvent.capacity || 'Unlimited'} Registered
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {viewingEvent.image_url && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Event Image</label>
+                        <img 
+                          src={viewingEvent.image_url} 
+                          alt={viewingEvent.title}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingEvent.description}</p>
+                  </div>
+                </div>
+
+                {/* Custom Event Type */}
+                {viewingEvent.custom_event_type && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Custom Event Type</label>
+                    <p className="text-sm text-gray-900">{viewingEvent.custom_event_type}</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button variant="outline" onClick={closeEventViewModal}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+
+      {/* View Opportunity Modal */}
+      <Modal 
+        isOpen={showOpportunityViewModal}
+        onClose={closeOpportunityViewModal}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Opportunity Details</h2>
+              <Button variant="outline" size="sm" onClick={closeOpportunityViewModal}>
+                <XMarkIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {viewingOpportunity && (
+              <div className="space-y-4">
+                {/* Opportunity Header */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{viewingOpportunity.title}</h3>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      viewingOpportunity.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      viewingOpportunity.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {viewingOpportunity.status?.charAt(0).toUpperCase() + viewingOpportunity.status?.slice(1)}
+                    </span>
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                      {viewingOpportunity.type}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Opportunity Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Company</label>
+                      <p className="text-sm text-gray-900">{viewingOpportunity.company}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Location</label>
+                      <p className="text-sm text-gray-900">{viewingOpportunity.location || 'Remote'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Salary Range</label>
+                      <p className="text-sm text-gray-900">{viewingOpportunity.salary_range || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Experience Required</label>
+                      <p className="text-sm text-gray-900">{viewingOpportunity.experience_range || 'Not specified'}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Application Deadline</label>
+                      <p className="text-sm text-gray-900">
+                        {viewingOpportunity.deadline ? 
+                          new Date(viewingOpportunity.deadline).toLocaleDateString() : 
+                          'No deadline'
+                        }
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Applications</label>
+                      <p className="text-sm text-gray-900">{viewingOpportunity.applications_count || 0} Applications</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills */}
+                {viewingOpportunity.skills && viewingOpportunity.skills.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Skills Required</label>
+                    <div className="flex flex-wrap gap-2">
+                      {viewingOpportunity.skills.map((skill, index) => (
+                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Job Description</label>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingOpportunity.description}</p>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button variant="outline" onClick={closeOpportunityViewModal}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
     </div>
   );
 };

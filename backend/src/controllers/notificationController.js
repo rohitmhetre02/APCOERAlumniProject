@@ -1,28 +1,99 @@
-import { Notification } from '../models/Notification.js';
-import { emitNotificationToCoordinator, emitNotificationToAdmins, emitNotification } from '../config/socket.js';
-import { validationResult } from 'express-validator';
+import { pool } from '../config/database.js';
 
-// @desc    Get all notifications
-// @route   GET /api/admin/notifications
-// @access  Admin
-export const getAllNotifications = async (req, res) => {
+// @desc    Helper function to create notifications
+// @access  Internal
+export const createNotification = async ({
+  receiver_id,
+  sender_id = null,
+  role_target,
+  department = null,
+  message,
+  type,
+  reference_id = null
+}) => {
   try {
+    const query = `
+      INSERT INTO notifications (
+        receiver_id, 
+        sender_id, 
+        role_target, 
+        department, 
+        message, 
+        type, 
+        reference_id
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [
+      receiver_id,
+      sender_id,
+      role_target,
+      department,
+      message,
+      type,
+      reference_id
+    ]);
+    
+    const notification = result.rows[0];
+    console.log(`📢 Notification created: ${message} (ID: ${notification.id})`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+};
+
+// @desc    Get notifications for logged-in user
+// @route   GET /api/notifications
+// @access  Private
+export const getUserNotifications = async (req, res) => {
+  try {
+    const userId = req.user.id;
     const { limit = 50, offset = 0 } = req.query;
     
-    const notifications = await Notification.getAll(
-      parseInt(limit), 
-      parseInt(offset)
-    );
+    const query = `
+      SELECT 
+        n.id,
+        n.sender_id,
+        n.receiver_id,
+        n.role_target,
+        n.department,
+        n.message,
+        n.type,
+        n.reference_id,
+        n.is_read,
+        n.created_at,
+        sender.first_name as sender_first_name,
+        sender.last_name as sender_last_name,
+        sender.email as sender_email,
+        sender.role as sender_role
+      FROM notifications n
+      LEFT JOIN users sender ON n.sender_id = sender.id
+      WHERE n.receiver_id = $1
+      ORDER BY n.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
     
-    const unreadCount = await Notification.getUnreadCount();
+    const result = await pool.query(query, [userId, parseInt(limit), parseInt(offset)]);
+    
+    // Get unread count
+    const unreadQuery = `
+      SELECT COUNT(*) as count
+      FROM notifications
+      WHERE receiver_id = $1 AND is_read = false
+    `;
+    const unreadResult = await pool.query(unreadQuery, [userId]);
+    const unreadCount = parseInt(unreadResult.rows[0].count);
     
     res.status(200).json({
       status: 'success',
       message: 'Notifications retrieved successfully',
       data: {
-        notifications,
+        notifications: result.rows,
         unreadCount,
-        total: notifications.length
+        total: result.rows.length
       }
     });
   } catch (error) {
@@ -35,11 +106,12 @@ export const getAllNotifications = async (req, res) => {
 };
 
 // @desc    Mark notification as read
-// @route   PUT /api/admin/notifications/:id/read
-// @access  Admin
+// @route   PUT /api/notifications/:id/read
+// @access  Private
 export const markNotificationAsRead = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     
     // Validate UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -50,19 +122,26 @@ export const markNotificationAsRead = async (req, res) => {
       });
     }
     
-    const notification = await Notification.markAsRead(id);
+    const query = `
+      UPDATE notifications 
+      SET is_read = true
+      WHERE id = $1 AND receiver_id = $2
+      RETURNING *
+    `;
     
-    if (!notification) {
+    const result = await pool.query(query, [id, userId]);
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
-        message: 'Notification not found'
+        message: 'Notification not found or access denied'
       });
     }
     
     res.status(200).json({
       status: 'success',
       message: 'Notification marked as read',
-      data: notification
+      data: result.rows[0]
     });
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -73,16 +152,29 @@ export const markNotificationAsRead = async (req, res) => {
   }
 };
 
-// @desc    Mark all notifications as read
-// @route   PUT /api/admin/notifications/read-all
-// @access  Admin
+// @desc    Mark all notifications as read for user
+// @route   PUT /api/notifications/read-all
+// @access  Private
 export const markAllNotificationsAsRead = async (req, res) => {
   try {
-    await Notification.markAllAsRead();
+    const userId = req.user.id;
+    
+    const query = `
+      UPDATE notifications 
+      SET is_read = true
+      WHERE receiver_id = $1 AND is_read = false
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, [userId]);
     
     res.status(200).json({
       status: 'success',
-      message: 'All notifications marked as read'
+      message: `Marked ${result.rows.length} notifications as read`,
+      data: {
+        markedCount: result.rows.length,
+        notifications: result.rows
+      }
     });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
@@ -94,11 +186,12 @@ export const markAllNotificationsAsRead = async (req, res) => {
 };
 
 // @desc    Delete notification
-// @route   DELETE /api/admin/notifications/:id
-// @access  Admin
+// @route   DELETE /api/notifications/:id
+// @access  Private
 export const deleteNotification = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
     
     // Validate UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -109,19 +202,25 @@ export const deleteNotification = async (req, res) => {
       });
     }
     
-    const notification = await Notification.delete(id);
+    const query = `
+      DELETE FROM notifications 
+      WHERE id = $1 AND receiver_id = $2
+      RETURNING *
+    `;
     
-    if (!notification) {
+    const result = await pool.query(query, [id, userId]);
+    
+    if (result.rows.length === 0) {
       return res.status(404).json({
         status: 'error',
-        message: 'Notification not found'
+        message: 'Notification not found or access denied'
       });
     }
     
     res.status(200).json({
       status: 'success',
       message: 'Notification deleted successfully',
-      data: notification
+      data: result.rows[0]
     });
   } catch (error) {
     console.error('Error deleting notification:', error);
@@ -132,196 +231,170 @@ export const deleteNotification = async (req, res) => {
   }
 };
 
-// @desc    Create notification (internal use)
-// @access  Internal
-export const createNotification = async (notificationData) => {
-  try {
-    const notification = await Notification.create(notificationData);
-    
-    // Emit socket event for real-time updates
-    const notificationPayload = {
-      id: notification.id,
-      message: notification.message,
-      type: notification.type,
-      is_read: notification.is_read,
-      created_at: notification.created_at
-    };
-    
-    // If user_id is null, send to admins, otherwise use legacy emit
-    if (notificationData.user_id === null) {
-      emitNotificationToAdmins(notificationPayload);
-      console.log(`📢 Admin notification created and emitted: ${notification.message}`);
-    } else {
-      emitNotification(notificationPayload);
-      console.log(`📢 Notification created and emitted: ${notification.message}`);
-    }
-    
-    return notification;
-  } catch (error) {
-    console.error('Error creating notification:', error);
-    throw error;
-  }
-};
 
-// @desc    Get unread notifications count
-// @route   GET /api/admin/notifications/unread-count
-// @access  Admin
-export const getUnreadCount = async (req, res) => {
-  try {
-    const count = await Notification.getUnreadCount();
-    
-    res.status(200).json({
-      status: 'success',
-      message: 'Unread count retrieved successfully',
-      data: { count }
-    });
-  } catch (error) {
-    console.error('Error fetching unread count:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Internal server error'
-    });
-  }
-};
-
-// @desc    Create department-specific notification for coordinators
+// @desc    CASE 1: USER REGISTRATION - Notify same department coordinators
 // @access  Internal
-export const createDepartmentNotification = async (notificationData) => {
+export const createAlumniRegistrationNotification = async (alumniData) => {
   try {
-    const { department, message, type, user_email } = notificationData;
-    
-    console.log(`🔍 Creating department notification for:`, {
-      department,
-      message,
-      type,
-      user_email
-    });
-    
-    // Find all coordinators for this department
-    const { pool } = await import('../config/database.js');
+    // Find coordinators for the same department
     const coordinatorsQuery = `
-      SELECT id, email, department as coordinator_department
+      SELECT id, email, department
       FROM users 
       WHERE role = 'coordinator' AND department = $1 AND is_approved = true
     `;
     
-    console.log(`🔍 Executing coordinator query for department: ${department}`);
-    const coordinatorsResult = await pool.query(coordinatorsQuery, [department]);
+    const coordinatorsResult = await pool.query(coordinatorsQuery, [alumniData.department]);
     const coordinators = coordinatorsResult.rows;
     
-    console.log(`👥 Found ${coordinators.length} coordinators for ${department}:`, 
-      coordinators.map(c => ({ id: c.id, email: c.email, department: c.coordinator_department })));
-    
     if (coordinators.length === 0) {
-      console.log(`⚠️ No active coordinators found for department: ${department}`);
-      return null;
+      console.log(`⚠️ No coordinators found for department: ${alumniData.department}`);
+      return [];
     }
     
-    // Check if notification already exists for this registration to prevent duplicates
-    const existingNotificationQuery = `
-      SELECT id FROM notifications 
-      WHERE type = $1 AND message LIKE $2 AND created_at > NOW() - INTERVAL '1 hour'
-    `;
-    
-    const existingResult = await pool.query(existingNotificationQuery, [
-      type, 
-      `%${user_email}%`
-    ]);
-    
-    if (existingResult.rows.length > 0) {
-      console.log(`⚠️ Notification already exists for ${user_email}, skipping duplicate`);
-      return null;
-    }
-    
-    // Create notification for each coordinator in the department
     const notifications = [];
     for (const coordinator of coordinators) {
-      console.log(`📝 Creating notification for coordinator:`, {
-        coordinator_id: coordinator.id,
-        coordinator_email: coordinator.email,
-        coordinator_department: coordinator.coordinator_department
+      const notification = await createNotification({
+        receiver_id: coordinator.id,
+        sender_id: alumniData.id,
+        role_target: 'coordinator',
+        department: alumniData.department,
+        message: "New student registered in your department. Approval required.",
+        type: 'registration',
+        reference_id: alumniData.id
       });
-      
-      const notification = await Notification.create({
-        user_id: coordinator.id,
-        message,
-        type,
-        department // Store department for reference
-      });
-      
-      console.log(`✅ Notification created in database:`, {
-        notification_id: notification.id,
-        user_id: notification.user_id,
-        message: notification.message
-      });
-      
-      // Emit socket event for real-time updates to specific coordinator
-      console.log(`📡 Emitting notification to coordinator room: coordinator_${coordinator.id}`);
-      emitNotificationToCoordinator(coordinator.id, {
-        id: notification.id,
-        message: notification.message,
-        type: notification.type,
-        is_read: notification.is_read,
-        created_at: notification.created_at
-      });
-      
       notifications.push(notification);
     }
     
-    console.log(`📢 Department notifications created for ${department}: ${coordinators.length} coordinators notified`);
+    console.log(`📢 CASE 1: Created ${notifications.length} registration notifications for ${alumniData.department} coordinators`);
     return notifications;
   } catch (error) {
-    console.error('Error creating department notification:', error);
+    console.error('Error creating alumni registration notification:', error);
     throw error;
   }
 };
 
-// @desc    Clean up old read notifications (older than 3 days)
+// @desc    CASE 2: ALUMNI CREATES POST - Notify admin only
 // @access  Internal
-export const cleanupOldNotifications = async () => {
+export const createContentApprovalNotification = async (contentData, contentType) => {
   try {
-    const { pool } = await import('../config/database.js');
-    
-    const deleteQuery = `
-      DELETE FROM notifications 
-      WHERE is_read = true AND updated_at < NOW() - INTERVAL '3 days'
+    // Find all admins
+    const adminsQuery = `
+      SELECT id, email
+      FROM users 
+      WHERE role = 'admin' AND is_approved = true
     `;
     
-    const result = await pool.query(deleteQuery);
+    const adminsResult = await pool.query(adminsQuery);
+    const admins = adminsResult.rows;
     
-    if (result.rowCount > 0) {
-      console.log(`🧹 Cleaned up ${result.rowCount} old read notifications (older than 3 days)`);
+    if (admins.length === 0) {
+      console.log(`⚠️ No admins found for content approval notification`);
+      return [];
     }
     
-    return result.rowCount;
+    const notifications = [];
+    for (const admin of admins) {
+      const notification = await createNotification({
+        receiver_id: admin.id,
+        sender_id: contentData.created_by || null,
+        role_target: 'admin',
+        department: null, // Admin notifications don't need department
+        message: "New post created by alumni. Approval required.",
+        type: 'approval',
+        reference_id: contentData.id
+      });
+      notifications.push(notification);
+    }
+    
+    console.log(`📢 CASE 2: Created ${notifications.length} approval notifications for admins`);
+    return notifications;
   } catch (error) {
-    console.error('Error cleaning up old notifications:', error);
+    console.error('Error creating content approval notification:', error);
     throw error;
   }
 };
 
-// Run cleanup daily (call this from server startup)
-export const scheduleNotificationCleanup = () => {
-  // Run cleanup every 24 hours
-  setInterval(async () => {
-    try {
-      await cleanupOldNotifications();
-    } catch (error) {
-      console.error('Scheduled notification cleanup failed:', error);
-    }
-  }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
-  
-  // Run once on startup
-  cleanupOldNotifications().catch(error => {
-    console.error('Startup notification cleanup failed:', error);
-  });
+// @desc    CASE 3: ADMIN APPROVES POST - Notify alumni
+// @access  Internal
+export const createPostApprovalNotification = async (postData, alumniId) => {
+  try {
+    const notification = await createNotification({
+      receiver_id: alumniId,
+      sender_id: null, // System notification
+      role_target: 'alumni',
+      department: postData.department || null,
+      message: "Your post has been approved.",
+      type: 'approval',
+      reference_id: postData.id
+    });
+    
+    console.log(`📢 CASE 3: Created approval notification for alumni`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating post approval notification:', error);
+    throw error;
+  }
 };
 
-export default {
-  getAllNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification,
-  createNotification,
-  getUnreadCount
+// @desc    CASE 3: ADMIN REJECTS POST - Notify alumni
+// @access  Internal
+export const createPostRejectionNotification = async (postData, alumniId) => {
+  try {
+    const notification = await createNotification({
+      receiver_id: alumniId,
+      sender_id: null, // System notification
+      role_target: 'alumni',
+      department: postData.department || null,
+      message: "Your post has been rejected.",
+      type: 'rejection',
+      reference_id: postData.id
+    });
+    
+    console.log(`📢 CASE 3: Created rejection notification for alumni`);
+    return notification;
+  } catch (error) {
+    console.error('Error creating post rejection notification:', error);
+    throw error;
+  }
+};
+
+// @desc    CASE 4: COORDINATOR CREATES POST - Notify admin
+// @access  Internal
+export const createCoordinatorPostNotification = async (postData, coordinatorId) => {
+  try {
+    // Find all admins
+    const adminsQuery = `
+      SELECT id, email
+      FROM users 
+      WHERE role = 'admin' AND is_approved = true
+    `;
+    
+    const adminsResult = await pool.query(adminsQuery);
+    const admins = adminsResult.rows;
+    
+    if (admins.length === 0) {
+      console.log(`⚠️ No admins found for coordinator post notification`);
+      return [];
+    }
+    
+    const notifications = [];
+    for (const admin of admins) {
+      const notification = await createNotification({
+        receiver_id: admin.id,
+        sender_id: coordinatorId,
+        role_target: 'admin',
+        department: postData.department || null,
+        message: "New post created by alumni. Approval required.",
+        type: 'approval',
+        reference_id: postData.id
+      });
+      notifications.push(notification);
+    }
+    
+    console.log(`📢 CASE 4: Created ${notifications.length} notifications for admins (coordinator post)`);
+    return notifications;
+  } catch (error) {
+    console.error('Error creating coordinator post notification:', error);
+    throw error;
+  }
 };

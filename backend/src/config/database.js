@@ -28,12 +28,10 @@ pool.on('error', (err, client) => {
 // Test database connection
 const testConnection = async () => {
   try {
-    console.log('🔍 Testing PostgreSQL connection...');
     const client = await pool.connect();
     const result = await client.query('SELECT NOW()');
     client.release();
     console.log('✅ PostgreSQL Connected Successfully');
-    console.log(`📊 Database Time: ${result.rows[0].now}`);
     
     return true;
   } catch (error) {
@@ -74,20 +72,14 @@ const connectDB = async () => {
     await User.createTable();
     
     // Import Opportunity model to create table
-    console.log('🔧 Initializing Opportunity model...');
     const { default: Opportunity } = await import('../models/Opportunity.js');
     await Opportunity.createTable();
-    console.log('✅ Opportunity model initialized');
     
     // Import EventRegistration model to create table
-    console.log('🔧 Initializing EventRegistration model...');
     const { default: EventRegistration } = await import('../models/EventRegistration.js');
     await EventRegistration.createTable();
-    console.log('✅ EventRegistration model initialized');
-    
-    console.log('🗄️  Database initialized successfully');
   } catch (error) {
-    console.error('❌ Database initialization failed:', error.message);
+    console.error(' Database initialization failed:', error.message);
     process.exit(1);
   }
 };
@@ -97,28 +89,28 @@ let isShuttingDown = false;
 
 const closePool = async () => {
   if (isShuttingDown) {
-    console.log('⚠️  Shutdown already in progress...');
+    console.log('  Shutdown already in progress...');
     return;
   }
   
   isShuttingDown = true;
   
   try {
-    console.log('🔄 Closing database connection pool...');
+    console.log(' Closing database connection pool...');
     await pool.end();
-    console.log('✅ PostgreSQL connection pool closed');
+    console.log('PostgreSQL connection pool closed');
   } catch (error) {
     if (error.message.includes('Called end on pool more than once')) {
-      console.log('ℹ️  Connection pool already closed');
+      console.log(' Connection pool already closed');
     } else {
-      console.error('❌ Error closing connection pool:', error.message);
+      console.error(' Error closing connection pool:', error.message);
     }
   }
 };
 
 // Handle process termination
 process.on('SIGINT', () => {
-  console.log('\n🛑 Received SIGINT (Ctrl+C). Gracefully shutting down...');
+  console.log('\n Received SIGINT (Ctrl+C). Gracefully shutting down...');
   closePool().then(() => {
     process.exit(0);
   }).catch(() => {
@@ -127,7 +119,7 @@ process.on('SIGINT', () => {
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n🛑 Received SIGTERM. Gracefully shutting down...');
+  console.log('\n Received SIGTERM. Gracefully shutting down...');
   closePool().then(() => {
     process.exit(0);
   }).catch(() => {

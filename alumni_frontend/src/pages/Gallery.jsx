@@ -71,7 +71,7 @@ const Gallery = () => {
               <div className="aspect-square relative">
                 <img
                   src={image.image_url}
-                  alt={image.title}
+                  alt="Gallery image"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center">
@@ -85,13 +85,6 @@ const Gallery = () => {
                   </div>
                 </div>
               </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 truncate">{image.title}</h3>
-                <p className="text-sm text-gray-600 truncate">{image.description}</p>
-                <p className="text-xs text-gray-500 mt-2">
-                  By {image.uploader_name} • {new Date(image.created_at).toLocaleDateString()}
-                </p>
-              </div>
             </div>
           ))}
         </div>
@@ -102,7 +95,7 @@ const Gallery = () => {
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">{selectedImage.title}</h2>
+              <h2 className="text-xl font-bold">Gallery Image</h2>
               <button
                 onClick={() => setViewModal(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -113,15 +106,9 @@ const Gallery = () => {
             <div className="mb-4">
               <img
                 src={selectedImage.image_url}
-                alt={selectedImage.title}
+                alt="Gallery image"
                 className="w-full h-auto max-h-96 object-contain"
               />
-            </div>
-            <div>
-              <p className="text-gray-700 mb-2">{selectedImage.description}</p>
-              <p className="text-sm text-gray-500">
-                Uploaded by {selectedImage.uploader_name} ({selectedImage.uploader_role}) on {new Date(selectedImage.created_at).toLocaleDateString()}
-              </p>
             </div>
           </div>
         </div>

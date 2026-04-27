@@ -14,6 +14,8 @@ import opportunityRoutes from './routes/opportunityRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import eventRegistrationRoutes from './routes/eventRegistrationRoutes.js';
 import galleryRoutes from './routes/galleryRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 dotenv.config();
 
@@ -44,6 +46,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Socket.IO middleware - make io available to all routes
+app.use((req, res, next) => {
+  req.io = req.app.get('io');
+  next();
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -70,6 +78,8 @@ app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/event-registrations', eventRegistrationRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

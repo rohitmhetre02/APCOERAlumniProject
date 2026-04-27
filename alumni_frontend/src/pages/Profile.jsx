@@ -27,7 +27,8 @@ const Profile = () => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState('about');
+  const [error, setError] = useState(null);
+  const [activeSection, setActiveSection] = useState('skills');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [modalItem, setModalItem] = useState(null);
@@ -53,7 +54,6 @@ const Profile = () => {
   const [fieldOfStudy, setFieldOfStudy] = useState('');
 
   // Form data states for each section
-  const [aboutForm, setAboutForm] = useState({ bio: '' });
   const [skillForm, setSkillForm] = useState({ skill_name: '' });
   const [experienceForm, setExperienceForm] = useState({
     role: '',
@@ -105,9 +105,10 @@ const Profile = () => {
   // Fetch profile data from API
   const fetchProfileData = async () => {
     try {
+      console.log('🔄 Starting profile data fetch...');
       const token = localStorage.getItem('alumni_token');
       if (!token) {
-        console.error('No authentication token found');
+        setError('Please login to view your profile');
         return;
       }
 
@@ -120,15 +121,22 @@ const Profile = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Profile data received:', data.data);
+       
+        
+        // Log each section for debugging
+        const { user, profile, education, skills, languages, experience, projects, achievements, certifications } = data.data;
+       
+        
         setProfileData(data.data);
+        setError(null);
       } else if (response.status === 401) {
-        console.error('Authentication failed - token may be expired');
+        setError('Session expired. Please login again.');
       } else {
-        console.error('Failed to fetch profile data:', response.statusText);
+        setError('Failed to fetch profile data');
       }
     } catch (error) {
-      console.error('Error fetching profile data:', error);
+      console.error('❌ Error fetching profile data:', error);
+      setError('Failed to fetch profile data');
     } finally {
       setLoading(false);
     }
@@ -166,10 +174,10 @@ const Profile = () => {
           }
         }));
       } else {
-        console.error('Failed to upload image');
+        
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
+      
     }
   };
 
@@ -270,11 +278,6 @@ const Profile = () => {
       const isEditing = editingItem.type === type && editingItem.id;
 
       switch (type) {
-        case 'about':
-          endpoint = `${import.meta.env.VITE_API_URL}/profile`;
-          method = 'PUT';
-          data = { bio: aboutForm.bio };
-          break;
         case 'skills':
           endpoint = isEditing 
             ? `${import.meta.env.VITE_API_URL}/profile/skills/${editingItem.id}`
@@ -346,21 +349,25 @@ const Profile = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log(`${type} saved successfully:`, result);
+        console.log(`✅ ${type} saved successfully:`, result);
         
         // Show success notification
         const sectionName = type.charAt(0).toUpperCase() + type.slice(1);
         const action = isEditing ? 'updated' : 'saved';
         showNotification(`${sectionName} ${action} successfully!`, 'success');
         
-        // Refresh profile data
-        await fetchProfileData();
-        // Clear form
+        // Clear form immediately for better UX
         setShowFormSection(null);
-        // Reset editing state
         setEditingItem({ type: null, id: null });
-        // Reset form state
         resetForm(type);
+        
+        // Refresh profile data with delay to ensure backend is updated
+        console.log(`🔄 Refreshing profile data after ${type} ${action}...`);
+        setTimeout(async () => {
+          console.log('⏰ Triggering profile data refresh...');
+          await fetchProfileData();
+          console.log('✅ Profile data refresh completed');
+        }, 800); // Increased delay for better reliability
       } else {
         console.error(`Failed to save ${type}:`, response.statusText);
         showNotification(`Failed to save ${type}`, 'error');
@@ -586,8 +593,16 @@ const Profile = () => {
       });
 
       if (response.ok) {
+        console.log(`✅ ${type} deleted successfully`);
         showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully!`, 'success');
-        await fetchProfileData();
+        
+        // Refresh profile data with delay to ensure backend is updated
+        console.log(`🔄 Refreshing profile data after ${type} deletion...`);
+        setTimeout(async () => {
+          console.log('⏰ Triggering profile data refresh after delete...');
+          await fetchProfileData();
+          console.log('✅ Profile data refresh completed after delete');
+        }, 500);
       } else {
         showNotification(`Failed to delete ${type}`, 'error');
       }
@@ -622,192 +637,179 @@ const Profile = () => {
   }
 
   const { user: userData, profile = {}, education, skills, languages, experience, projects, achievements, exams, certifications } = profileData;
-  console.log('🔍 Destructured data:', { userData, profile });
+  
 
-  return (
+      return (
     <div className="min-h-screen bg-gray-50">
-      
+      {/* Notification */}
+      {notification.show && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+          notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`}>
+          {notification.message}
+        </div>
+      )}
+
       {/* Profile Card with User Details */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {loading ? (
           <div className="bg-white rounded-lg shadow-lg p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading profile data...</p>
           </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-center space-x-6">
-            {/* Profile Picture */}
-            <div className="relative">
-              {userData?.profile_image ? (
-                <img 
-                  src={userData.profile_image} 
-                  alt="Profile" 
-                  className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
-                  <UserCircleIcon className="w-16 h-16 text-gray-400" />
-                </div>
-              )}
-              <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg">
-                <CameraIcon className="w-4 h-4" />
-                <input 
-                  type="file" 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={handleImageUpload}
-                />
-              </label>
+        ) : error ? (
+          <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+            <div className="text-red-500 mb-4">
+              <XMarkIcon className="w-12 h-12 mx-auto" />
             </div>
-            
-            {/* User Details Card */}
-            <div className="flex-1">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h1 className="text-2xl font-bold text-gray-900 mb-3">
-                  {userData?.first_name || 'N/A'} {userData?.last_name || 'N/A'}
-                </h1>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="flex items-center space-x-2">
-                    <EnvelopeIcon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">
-                      <strong>Email:</strong> {userData?.email || 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <PhoneIcon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">
-                      <strong>Contact:</strong> {userData?.contact_number || profile?.contact_number || 'Not added'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <BuildingOfficeIcon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">
-                      <strong>Department:</strong> {userData?.department || profile?.department || 'Not added'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <DocumentIcon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">
-                      <strong>PRN:</strong> {userData?.prn_number || profile?.prn_number || 'Not added'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CalendarIcon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">
-                      <strong>Graduation:</strong> {userData?.passout_year || profile?.graduation_year || 'Not added'}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <UserGroupIcon className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">
-                      <strong>Role:</strong> {userData?.role || 'Not added'}
-                    </span>
-                  </div>
-                </div>
-                
-                {!profile && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ Profile not found. Please edit your profile to add your information.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Edit Button */}
-            <button
-              onClick={() => {
-                setProfileDetailsForm({
-                  first_name: userData?.first_name || '',
-                  last_name: userData?.last_name || '',
-                  phone: userData?.contact_number || profile?.contact_number || '',
-                  department: userData?.department || profile?.department || '',
-                  graduation_year: userData?.passout_year || profile?.graduation_year || ''
-                });
-                setShowProfilePopup(true);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button 
+              onClick={fetchProfileData}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
-              <PencilIcon className="w-4 h-4" />
-              <span>Edit </span>
+              Retry
             </button>
           </div>
-
-          {/* Bio */}
-          {profile?.bio && (
-            <div className="border-t mt-4 pt-4">
-              <h3 className="font-semibold text-gray-900 mb-2">About</h3>
-              <p className="text-gray-600 leading-relaxed">{profile.bio}</p>
+        ) : (
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+              {/* Profile Picture */}
+              <div className="relative">
+                {userData?.profile_image ? (
+                  <img 
+                    src={userData.profile_image} 
+                    alt="Profile" 
+                    className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
+                    <UserCircleIcon className="w-16 h-16 text-gray-400" />
+                  </div>
+                )}
+                <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg">
+                  <CameraIcon className="w-4 h-4" />
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleImageUpload}
+                  />
+                </label>
+              </div>
+              
+              {/* User Details Card */}
+              <div className="flex-1">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h1 className="text-2xl font-bold text-gray-900 mb-3">
+                    {userData?.first_name || 'N/A'} {userData?.last_name || 'N/A'}
+                  </h1>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <EnvelopeIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">
+                        <strong>Email:</strong> {userData?.email || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <PhoneIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">
+                        <strong>Contact:</strong> {userData?.contact_number || profile?.contact_number || 'Not added'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <BuildingOfficeIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">
+                        <strong>Department:</strong> {userData?.department || profile?.department || 'Not added'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <DocumentIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">
+                        <strong>PRN:</strong> {userData?.prn_number || profile?.prn_number || 'Not added'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <CalendarIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">
+                        <strong>Graduation:</strong> {userData?.passout_year || profile?.graduation_year || 'Not added'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <UserGroupIcon className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-700">
+                        <strong>Role:</strong> {userData?.role || 'Not added'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {!profile && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ Profile not found. Please edit your profile to add your information.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Edit Button */}
+              <button
+                onClick={() => {
+                  setProfileDetailsForm({
+                    first_name: userData?.first_name || '',
+                    last_name: userData?.last_name || '',
+                    phone: userData?.contact_number || profile?.contact_number || '',
+                    department: userData?.department || profile?.department || '',
+                    graduation_year: userData?.passout_year || profile?.graduation_year || ''
+                  });
+                  setShowProfilePopup(true);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <PencilIcon className="w-4 h-4" />
+                <span>Edit </span>
+              </button>
             </div>
-          )}
-        </div>
+          </div>
         )}
       </div>
 
       {/* Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-md">
-          <div className="flex flex-wrap space-x-2 p-4 border-b">
-            {[
-              { id: 'about', label: 'About' },
-              { id: 'skills', label: 'Skills' },
-              { id: 'experience', label: 'Experience' },
-              { id: 'projects', label: 'Projects' },
-              { id: 'education', label: 'Education' },
-              { id: 'languages', label: 'Languages' },
-              { id: 'achievements', label: 'Achievements' },
-              { id: 'certifications', label: 'Certifications' }
-            ].map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors mb-2 ${
-                  activeSection === section.id
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {section.label}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:space-y-0 p-4 border-b">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 w-full">
+              {[
+                { id: 'skills', label: 'Skills' },
+                { id: 'experience', label: 'Experience' },
+                { id: 'projects', label: 'Projects' },
+                { id: 'education', label: 'Education' },
+                { id: 'languages', label: 'Languages' },
+                { id: 'achievements', label: 'Achievements' },
+                { id: 'certifications', label: 'Certifications' }
+              ].map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
+                    activeSection === section.id
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Content Area - COMMON UI RULES for All Sections */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div className="space-y-4">
           
-          {/* ABOUT SECTION */}
-          {activeSection === 'about' && (
-            <div className="rounded-xl shadow-sm p-5 bg-white">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">About</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">Bio</label>
-                  <textarea 
-                    className="border border-blue-200 rounded-lg px-3 py-2 w-full focus:border-blue-400 focus:outline-none"
-                    rows="4"
-                    placeholder="Tell us about yourself..."
-                    value={aboutForm.bio || profile?.bio || ''}
-                    onChange={(e) => setAboutForm({ bio: e.target.value })}
-                  ></textarea>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => handleSave('about')}
-                    className="bg-blue-500 text-white rounded-lg px-4 py-2 hover:bg-blue-600"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
+          
           {/* SKILLS SECTION */}
           {activeSection === 'skills' && (
             <div className="rounded-xl shadow-sm p-5 bg-white">
@@ -1010,10 +1012,15 @@ const Profile = () => {
                     experience.map((exp) => (
                       <div key={exp.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start">
-                          <div>
+                          <div className="flex-1">
                             <h4 className="font-semibold text-gray-900">{exp.role}</h4>
                             <p className="text-gray-600">{exp.company}</p>
                             <p className="text-sm text-gray-500">{exp.location}</p>
+                            {exp.employment_type && (
+                              <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                {exp.employment_type.charAt(0).toUpperCase() + exp.employment_type.slice(1).replace('-', ' ')}
+                              </span>
+                            )}
                             <p className="text-sm text-gray-400">{exp.start_date} - {exp.end_date || 'Present'}</p>
                           </div>
                           <div className="flex space-x-2">

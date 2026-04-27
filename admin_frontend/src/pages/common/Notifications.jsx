@@ -40,9 +40,36 @@ const Notifications = () => {
       markAsRead(notification.id);
     }
 
-    // Navigate to approval page if it's an approval notification
-    if (notification.type === 'approval') {
+    // Navigate based on notification type and context
+    if (notification.type === 'registration') {
+      // For coordinator: Navigate to profile approval page
       navigate('/coordinator/profile-approval');
+    } else if (notification.type === 'approval') {
+      // For admin: Check if it's event or opportunity approval
+      const userRole = localStorage.getItem('admin_role') || localStorage.getItem('user_role');
+      
+      if (userRole === 'admin') {
+        // Admin approval notifications - navigate to appropriate approval page
+        // For now, default to events since that's most common
+        // You can enhance this by checking reference_id or message content
+        if (notification.message.toLowerCase().includes('event')) {
+          navigate('/admin/approve-events');
+        } else if (notification.message.toLowerCase().includes('opportunity')) {
+          navigate('/admin/approve-opportunities');
+        } else {
+          // Default to events if unclear
+          navigate('/admin/approve-events');
+        }
+      } else {
+        // Coordinator approval notifications
+        navigate('/coordinator/profile-approval');
+      }
+    } else if (notification.type === 'event_created') {
+      // For admin: Navigate to event approval page
+      navigate('/admin/approve-events');
+    } else if (notification.type === 'opportunity_created') {
+      // For admin: Navigate to opportunity approval page
+      navigate('/admin/approve-opportunities');
     }
   };
 
@@ -75,6 +102,8 @@ const Notifications = () => {
 
   const getNotificationIcon = (type) => {
     switch (type) {
+      case 'registration':
+        return <UserIcon className="w-5 h-5 text-green-600" />;
       case 'approval':
         return <UserIcon className="w-5 h-5 text-blue-600" />;
       default:
@@ -85,6 +114,8 @@ const Notifications = () => {
   const getNotificationColor = (type, isRead) => {
     if (isRead) return 'bg-gray-50 border-gray-200';
     switch (type) {
+      case 'registration':
+        return 'bg-green-50 border-green-200';
       case 'approval':
         return 'bg-blue-50 border-blue-200';
       default:
@@ -194,18 +225,23 @@ const Notifications = () => {
                                 <h3 className={`text-sm font-bold ${
                                   !notification.is_read ? 'text-gray-900' : 'text-gray-700'
                                 }`}>
-                                  {notification.type === 'approval' ? 'Approval Required' : 'System Notification'}
+                                  {notification.type === 'registration' ? 'New Registration' : 
+                                   notification.type === 'approval' ? 'Content Approval' : 
+                                   'System Notification'}
                                 </h3>
                                 <p className="text-sm text-gray-800 mt-1 font-medium">
                                   {notification.message}
                                 </p>
-                                {notification.type === 'approval' && (
+                                {(notification.type === 'registration' || notification.type === 'approval') && (
                                   <div className="mt-2">
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                                      Approval Required
+                                      {notification.type === 'registration' ? 'Registration' : 
+                                       notification.message.toLowerCase().includes('event') ? 'Event' :
+                                       notification.message.toLowerCase().includes('opportunity') ? 'Opportunity' :
+                                       'Content'}
                                     </span>
                                     <span className="ml-2 text-xs text-gray-500">
-                                      Click to review and approve
+                                      Click to review and {notification.type === 'registration' ? 'approve profile' : 'approve'}
                                     </span>
                                   </div>
                                 )}
@@ -270,18 +306,23 @@ const Notifications = () => {
                                 <h3 className={`text-sm font-bold ${
                                   !notification.is_read ? 'text-gray-900' : 'text-gray-700'
                                 }`}>
-                                  {notification.type === 'approval' ? 'Approval Required' : 'System Notification'}
+                                  {notification.type === 'registration' ? 'New Registration' : 
+                                   notification.type === 'approval' ? 'Content Approval' : 
+                                   'System Notification'}
                                 </h3>
                                 <p className="text-sm text-gray-800 mt-1 font-medium">
                                   {notification.message}
                                 </p>
-                                {notification.type === 'approval' && (
+                                {(notification.type === 'registration' || notification.type === 'approval') && (
                                   <div className="mt-2">
                                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                                      Approval Required
+                                      {notification.type === 'registration' ? 'Registration' : 
+                                       notification.message.toLowerCase().includes('event') ? 'Event' :
+                                       notification.message.toLowerCase().includes('opportunity') ? 'Opportunity' :
+                                       'Content'}
                                     </span>
                                     <span className="ml-2 text-xs text-gray-500">
-                                      Click to review and approve
+                                      Click to review and {notification.type === 'registration' ? 'approve profile' : 'approve'}
                                     </span>
                                   </div>
                                 )}

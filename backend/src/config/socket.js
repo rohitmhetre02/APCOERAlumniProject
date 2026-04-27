@@ -1,75 +1,121 @@
-import { Server } from 'socket.io';
+import { Server } from "socket.io";
 
 let io;
 
 export const initializeSocket = (server) => {
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",")
+    : ["http://localhost:5173", "http://localhost:5174"];
+
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:5173",
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
-      credentials: true
-    }
+      credentials: true,
+    },
+    transports: ["websocket", "polling"], // Add polling as fallback
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
-  io.on('connection', (socket) => {
+  io.on("connection", (socket) => {
     console.log(`🔌 Socket connected: ${socket.id}`);
-    
-    // Join coordinator to their personal room when they authenticate
-    socket.on('authenticate_coordinator', (coordinatorId) => {
-      console.log(`🔐 Coordinator ${coordinatorId} authenticated, joining room`);
-      const roomName = `coordinator_${coordinatorId}`;
+
+    // ✅ AUTO AUTH FROM HANDSHAKE (BEST PRACTICE)
+    const { userId, role } = socket.handshake.auth || {};
+
+    if (userId) {
+      socket.join(userId);
+      console.log(`👤 Joined user room: ${userId}`);
+    }
+
+    if (role === "admin") {
+      socket.join("admin_room");
+      console.log(`👨‍💼 Joined admin room`);
+    }
+
+    if (role === "coordinator" && userId) {
+      const roomName = `coordinator_${userId}`;
       socket.join(roomName);
-      console.log(`📱 Socket ${socket.id} joined room: ${roomName}`);
-      console.log(`📱 Total rooms for socket:`, socket.rooms);
-      console.log(`📱 Total clients in ${roomName}:`, io.sockets.adapter.rooms.get(roomName)?.size || 0);
+      console.log(`📘 Joined coordinator room: ${roomName}`);
+    }
+
+    // ✅ OPTIONAL: manual auth (fallback)
+    socket.on("authenticate", (userData) => {
+      const { userId, role } = userData;
+
+      if (userId) {
+        socket.join(userId);
+        console.log(`👤 (Manual) Joined user room: ${userId}`);
+      }
+
+      if (role === "admin") {
+        socket.join("admin_room");
+      }
+
+      if (role === "coordinator") {
+        socket.join(`coordinator_${userId}`);
+      }
     });
-    
-    // Join admin to admin room
-    socket.on('authenticate_admin', () => {
-      console.log(`🔐 Admin authenticated, joining admin room`);
-      socket.join('admin_room');
-      console.log(`📱 Socket ${socket.id} joined admin room`);
+
+    // ✅ MESSAGE HANDLING
+    socket.on("send-message", (data) => {
+      const { senderId, senderName, senderEmail, senderRole, senderDepartment, receiverId, message, timestamp } = data;
+
+      console.log(`📨 ${senderId} → ${receiverId}: ${message}`);
+
+      io.to(receiverId).emit("new-message", {
+        senderId,
+        senderName,
+        senderEmail,
+        senderRole,
+        senderDepartment,
+        receiverId,
+        message,
+        timestamp,
+      });
     });
-    
-    socket.on('disconnect', () => {
-      console.log(`� Socket disconnected: ${socket.id}`);
+
+    socket.on("disconnect", (reason) => {
+      console.log(`❌ Socket disconnected: ${socket.id} - Reason: ${reason}`);
+    });
+
+    socket.on("error", (error) => {
+      console.error(`🔌 Socket error for ${socket.id}:`, error);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error(`🔌 Connect error for ${socket.id}:`, error);
     });
   });
 
-  console.log('🚀 Socket.IO server initialized');
+  console.log("🚀 Socket.IO initialized");
   return io;
 };
 
 export const getSocketIO = () => {
   if (!io) {
-    throw new Error('Socket.IO not initialized. Call initializeSocket first.');
+    throw new Error("Socket.IO not initialized");
   }
   return io;
 };
 
-// Emit notification to specific coordinator
-export const emitNotificationToCoordinator = (coordinatorId, notificationData) => {
-  const socketIO = getSocketIO();
-  const roomName = `coordinator_${coordinatorId}`;
-  
-  console.log(`📡 Emitting to room: ${roomName}`);
-  console.log(`📡 Room exists check:`, socketIO.sockets.adapter.rooms.has(roomName));
-  console.log(`📡 Clients in room:`, socketIO.sockets.adapter.rooms.get(roomName)?.size || 0);
-  
-  socketIO.to(roomName).emit('new_notification', notificationData);
-  console.log(`📢 Notification emitted to coordinator ${coordinatorId}:`, notificationData.message);
+// ✅ GENERAL NOTIFICATION
+export const emitNotification = (room, data) => {
+  if (!io) return;
+  io.to(room).emit("new_notification", data);
+  console.log(`📢 Notification → ${room}`);
 };
 
-// Emit notification to all admins
-export const emitNotificationToAdmins = (notificationData) => {
-  const socketIO = getSocketIO();
-  socketIO.to('admin_room').emit('new_notification', notificationData);
-  console.log('📢 Notification emitted to admins:', notificationData.message);
+// ✅ COORDINATOR NOTIFICATION
+export const emitNotificationToCoordinator = (coordinatorId, data) => {
+  const room = `coordinator_${coordinatorId}`;
+  io.to(room).emit("new_notification", data);
+  console.log(`📢 Coordinator notification → ${room}`);
 };
 
-// Legacy function for backward compatibility
-export const emitNotification = (notificationData) => {
-  const socketIO = getSocketIO();
-  socketIO.emit('new_notification', notificationData);
-  console.log('📢 Notification emitted to all:', notificationData.message);
+// ✅ ADMIN NOTIFICATION
+export const emitNotificationToAdmins = (data) => {
+  io.to("admin_room").emit("new_notification", data);
+  console.log(`📢 Admin notification`);
 };

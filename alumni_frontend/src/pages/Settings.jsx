@@ -9,8 +9,8 @@ import {
   EyeSlashIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ArrowPathIcon,
-  UserIcon
+  XMarkIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -32,30 +32,14 @@ const Settings = () => {
   // Password Change States
   const [passwordSection, setPasswordSection] = useState('initial'); // initial, enter, new, success
   const [passwordCurrentPassword, setPasswordCurrentPassword] = useState('');
+  const [verifiedPassword, setVerifiedPassword] = useState(''); // Store verified password
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showPasswordCurrent, setShowPasswordCurrent] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Profile Update States
-  const [profileSection, setProfileSection] = useState('initial'); // initial, edit, success
-  const [profileData, setProfileData] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    department: '',
-    graduationYear: '',
-    currentCompany: '',
-    jobTitle: '',
-    linkedinProfile: ''
-  });
-
-  // Delete Account States
-  const [deleteSection, setDeleteSection] = useState('initial'); // initial, password, success
-  const [deletePassword, setDeletePassword] = useState('');
-  const [showDeletePassword, setShowDeletePassword] = useState(false);
-
+  
   // Forget Password States
   const [forgetPasswordSection, setForgetPasswordSection] = useState('initial'); // initial, otp, newpassword, success
   const [forgetPasswordOtp, setForgetPasswordOtp] = useState('');
@@ -64,26 +48,30 @@ const Settings = () => {
   const [showForgetNewPassword, setShowForgetNewPassword] = useState(false);
   const [showForgetConfirmPassword, setShowForgetConfirmPassword] = useState(false);
 
-  useEffect(() => {
-    // Initialize profile data
-    if (user) {
-      setProfileData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        phone: user.phone || '',
-        department: user.department || '',
-        graduationYear: user.graduationYear || '',
-        currentCompany: user.currentCompany || '',
-        jobTitle: user.jobTitle || '',
-        linkedinProfile: user.linkedinProfile || ''
-      });
-    }
-  }, [user]);
-
+  
   useEffect(() => {
     setError('');
     setSuccess('');
-  }, [emailSection, passwordSection, deleteSection, forgetPasswordSection, profileSection]);
+  }, [emailSection, passwordSection, forgetPasswordSection]);
+
+  // Auto-dismiss notifications
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
 
   // Email Update Functions
   const handleEmailUpdateStart = () => {
@@ -172,8 +160,8 @@ const Settings = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('alumni_token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-email-update-otp`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/update-email`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -226,6 +214,7 @@ const Settings = () => {
 
       if (response.ok) {
         setPasswordSection('new');
+        setVerifiedPassword(passwordCurrentPassword); // Store verified password
         setPasswordCurrentPassword('');
       } else {
         setError(data.message || 'Wrong password. Please enter the correct password.');
@@ -262,7 +251,7 @@ const Settings = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ newPassword })
+        body: JSON.stringify({ currentPassword: verifiedPassword, newPassword })
       });
 
       const data = await response.json();
@@ -272,6 +261,7 @@ const Settings = () => {
         setSuccess('Password updated successfully!');
         setNewPassword('');
         setConfirmNewPassword('');
+        setVerifiedPassword(''); // Clear verified password
       } else {
         setError(data.message || 'Failed to update password. Please try again.');
       }
@@ -282,50 +272,10 @@ const Settings = () => {
     }
   };
 
-  // Profile Update Functions
-  const handleProfileUpdateStart = () => {
-    setProfileSection('edit');
-    setError('');
-    setSuccess('');
-  };
-
-  const updateProfile = async () => {
-    if (!profileData.firstName || !profileData.lastName) {
-      setError('First name and last name are required');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('alumni_token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/update-profile`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(profileData)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setProfileSection('success');
-        setSuccess('Profile updated successfully!');
-        updateUser({ ...user, ...profileData });
-      } else {
-        setError(data.message || 'Failed to update profile. Please try again.');
-      }
-    } catch (err) {
-      setError('Failed to update profile. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
   // Forget Password Functions
   const handleForgetPassword = () => {
-    setForgetPasswordSection('otp');
+    setForgetPasswordSection('email');
     setError('');
     setSuccess('');
     sendForgetPasswordOTP();
@@ -346,12 +296,15 @@ const Settings = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('OTP sent to your registered email address');
+        setForgetPasswordSection('otp');
+        setSuccess(`OTP sent to your registered email: ${data.email || user?.email}`);
       } else {
         setError(data.message || 'Failed to send OTP. Please try again.');
+        setForgetPasswordSection('initial');
       }
     } catch (err) {
       setError('Failed to send OTP. Please try again.');
+      setForgetPasswordSection('initial');
     } finally {
       setLoading(false);
     }
@@ -439,54 +392,7 @@ const Settings = () => {
     }
   };
 
-  // Delete Account Functions
-  const handleDeleteAccount = () => {
-    setDeleteSection('password');
-    setError('');
-    setSuccess('');
-  };
-
-  const deleteAccount = async () => {
-    if (!deletePassword) {
-      setError('Please enter your password to confirm account deletion');
-      return;
-    }
-
-    if (!window.confirm('Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently remove all your data.')) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('alumni_token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/delete-account`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ password: deletePassword })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setDeleteSection('success');
-        setSuccess('Account deleted successfully. You will be logged out...');
-        setTimeout(() => {
-          localStorage.removeItem('alumni_token');
-          window.location.href = '/login';
-        }, 2000);
-      } else {
-        setError(data.message || 'Wrong password. Account deletion failed.');
-      }
-    } catch (err) {
-      setError('Failed to delete account. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
   const resetSection = (section) => {
     switch(section) {
       case 'email':
@@ -498,21 +404,15 @@ const Settings = () => {
       case 'password':
         setPasswordSection('initial');
         setPasswordCurrentPassword('');
+        setVerifiedPassword('');
         setNewPassword('');
         setConfirmNewPassword('');
         break;
-      case 'delete':
-        setDeleteSection('initial');
-        setDeletePassword('');
-        break;
-      case 'forget':
+            case 'forget':
         setForgetPasswordSection('initial');
         setForgetPasswordOtp('');
         setForgetPasswordNew('');
         setForgetPasswordConfirm('');
-        break;
-      case 'profile':
-        setProfileSection('initial');
         break;
     }
     setError('');
@@ -520,157 +420,44 @@ const Settings = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center gap-3">
-        <Cog6ToothIcon className="h-8 w-8 text-gray-600" />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600">Manage your alumni account settings and preferences</p>
-        </div>
+    <>
+      {/* Toast Notifications - Fixed Position Top-Right */}
+      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center gap-3 shadow-lg animate-pulse">
+            <XCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0" />
+            <p className="text-sm text-red-800 flex-1">{error}</p>
+            <button
+              onClick={() => setError('')}
+              className="text-red-600 hover:text-red-800 flex-shrink-0"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-4 flex items-center gap-3 shadow-lg animate-pulse">
+            <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0" />
+            <p className="text-sm text-green-800 flex-1">{success}</p>
+            <button
+              onClick={() => setSuccess('')}
+              className="text-green-600 hover:text-green-800 flex-shrink-0"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Profile Update Section */}
-      <Card>
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <UserIcon className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
+      <div className="space-y-6 max-w-4xl mx-auto px-4 py-8">
+        <div className="flex items-center gap-3">
+          <Cog6ToothIcon className="h-8 w-8 text-gray-600" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+            <p className="text-gray-600">Manage your alumni account settings and preferences</p>
           </div>
-
-          {profileSection === 'initial' && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-600">Full Name</p>
-                  <p className="text-lg font-medium text-gray-900">
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Email Address</p>
-                  <p className="text-lg font-medium text-gray-900">{user?.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Phone</p>
-                  <p className="text-lg font-medium text-gray-900">{user?.phone || 'Not specified'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Department</p>
-                  <p className="text-lg font-medium text-gray-900">{user?.department || 'Not specified'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Graduation Year</p>
-                  <p className="text-lg font-medium text-gray-900">{user?.graduationYear || 'Not specified'}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Current Company</p>
-                  <p className="text-lg font-medium text-gray-900">{user?.currentCompany || 'Not specified'}</p>
-                </div>
-              </div>
-              <Button onClick={handleProfileUpdateStart}>
-                Update Profile
-              </Button>
-            </div>
-          )}
-
-          {profileSection === 'edit' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <Input
-                    type="text"
-                    value={profileData.firstName}
-                    onChange={(e) => setProfileData({...profileData, firstName: e.target.value})}
-                    placeholder="Enter first name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <Input
-                    type="text"
-                    value={profileData.lastName}
-                    onChange={(e) => setProfileData({...profileData, lastName: e.target.value})}
-                    placeholder="Enter last name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                  <Input
-                    type="tel"
-                    value={profileData.phone}
-                    onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <Input
-                    type="text"
-                    value={profileData.department}
-                    onChange={(e) => setProfileData({...profileData, department: e.target.value})}
-                    placeholder="Enter department"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Graduation Year</label>
-                  <Input
-                    type="text"
-                    value={profileData.graduationYear}
-                    onChange={(e) => setProfileData({...profileData, graduationYear: e.target.value})}
-                    placeholder="Enter graduation year"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Company</label>
-                  <Input
-                    type="text"
-                    value={profileData.currentCompany}
-                    onChange={(e) => setProfileData({...profileData, currentCompany: e.target.value})}
-                    placeholder="Enter current company"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
-                  <Input
-                    type="text"
-                    value={profileData.jobTitle}
-                    onChange={(e) => setProfileData({...profileData, jobTitle: e.target.value})}
-                    placeholder="Enter job title"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn Profile</label>
-                  <Input
-                    type="url"
-                    value={profileData.linkedinProfile}
-                    onChange={(e) => setProfileData({...profileData, linkedinProfile: e.target.value})}
-                    placeholder="Enter LinkedIn profile URL"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={updateProfile} disabled={loading}>
-                  {loading ? 'Updating...' : 'Update Profile'}
-                </Button>
-                <Button variant="outline" onClick={() => resetSection('profile')}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {profileSection === 'success' && (
-            <div className="text-center py-4">
-              <CheckCircleIcon className="h-12 w-12 text-green-600 mx-auto mb-2" />
-              <p className="text-lg font-medium text-gray-900">Profile updated successfully!</p>
-              <Button onClick={() => resetSection('profile')} className="mt-4">
-                Done
-              </Button>
-            </div>
-          )}
         </div>
-      </Card>
 
       {/* Email Update Section */}
       <Card>
@@ -910,9 +697,24 @@ const Settings = () => {
           )}
 
           {/* Forget Password Section */}
+          {forgetPasswordSection === 'email' && (
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-md font-medium text-gray-900">Forget Password</h3>
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-sm text-gray-600">Sending OTP to your registered email...</p>
+              </div>
+            </div>
+          )}
+
           {forgetPasswordSection === 'otp' && (
             <div className="space-y-4 border-t pt-4">
               <h3 className="text-md font-medium text-gray-900">Forget Password</h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>OTP sent to:</strong> {user?.email}
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Enter OTP sent to your registered email
@@ -1005,93 +807,8 @@ const Settings = () => {
         </div>
       </Card>
 
-      {/* Delete Account Section */}
-      <Card className="border-red-200">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <TrashIcon className="h-5 w-5 text-red-600" />
-            <h2 className="text-lg font-semibold text-red-900">Delete Account</h2>
-          </div>
-
-          {deleteSection === 'initial' && (
-            <div className="space-y-4">
-              <p className="text-sm text-red-600">
-                <strong>Warning:</strong> This action cannot be undone and will permanently delete all your data including:
-              </p>
-              <ul className="text-sm text-red-600 list-disc list-inside space-y-1">
-                <li>Your profile information and academic details</li>
-                <li>Job applications and event registrations</li>
-                <li>Messages and connections</li>
-                <li>Account settings and preferences</li>
-              </ul>
-              <Button variant="destructive" onClick={handleDeleteAccount}>
-                Delete My Account
-              </Button>
-            </div>
-          )}
-
-          {deleteSection === 'password' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Enter Password to Confirm Deletion
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showDeletePassword ? 'text' : 'password'}
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    placeholder="Enter your password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowDeletePassword(!showDeletePassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showDeletePassword ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="destructive" onClick={deleteAccount} disabled={loading}>
-                  {loading ? 'Deleting...' : 'Delete Account'}
-                </Button>
-                <Button variant="outline" onClick={() => resetSection('delete')}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {deleteSection === 'success' && (
-            <div className="text-center py-4">
-              <CheckCircleIcon className="h-12 w-12 text-green-600 mx-auto mb-2" />
-              <p className="text-lg font-medium text-gray-900">Account deleted successfully!</p>
-              <p className="text-sm text-gray-600">You will be logged out automatically...</p>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Error and Success Messages */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <XCircleIcon className="h-5 w-5 text-red-600" />
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <CheckCircleIcon className="h-5 w-5 text-green-600" />
-            <p className="text-sm text-green-600">{success}</p>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+      </>
   );
 };
 

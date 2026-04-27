@@ -55,6 +55,10 @@ router.post('/:id/apply', authenticateUser, applyForOpportunity);
 router.put('/applications/:applicationId/accept', authenticateUser, acceptApplication);
 router.put('/applications/:applicationId/reject', authenticateUser, rejectApplication);
 
+// Routes for alumni to edit/delete their own opportunities
+router.put('/:id', authenticateUser, updateOpportunity);
+router.delete('/:id', authenticateUser, deleteOpportunity);
+
 // Admin/Coordinator protected routes
 router.use(authenticateAdminOrCoordinator);
 
@@ -72,16 +76,6 @@ router.put('/:id/reject', authenticateAdmin, rejectOpportunity);
 // @desc    Create new opportunity
 // @access  Admin, Coordinator
 router.post('/', createOpportunity);
-
-// @route   PUT /api/opportunities/:id
-// @desc    Update opportunity
-// @access  Admin, Coordinator (if creator)
-router.put('/:id', updateOpportunity);
-
-// @route   DELETE /api/opportunities/:id
-// @desc    Delete opportunity
-// @access  Admin, Coordinator (if creator)
-router.delete('/:id', deleteOpportunity);
 
 // Application Management Routes
 

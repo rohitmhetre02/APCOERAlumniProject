@@ -28,8 +28,7 @@ const MyApplications = () => {
       setLoading(true);
       const token = localStorage.getItem('alumni_token');
       
-      console.log('🔧 Fetching my applications...');
-      console.log('🔧 Token available:', !!token);
+      
       
       if (!token) {
         setError('Please login to view your applications');
@@ -38,8 +37,7 @@ const MyApplications = () => {
       }
 
       const apiUrl = `${import.meta.env.VITE_API_URL}/applications/my-applications`;
-      console.log('🔧 API URL:', apiUrl);
-
+     
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -47,22 +45,19 @@ const MyApplications = () => {
         }
       });
 
-      console.log('🔧 Response status:', response.status);
-      console.log('🔧 Response ok:', response.ok);
-
+      
       const data = await response.json();
-      console.log('🔧 Response data:', data);
+      
 
       if (data.success) {
-        console.log('🔧 Applications fetched successfully:', data.data.length, 'applications');
-        console.log('🔧 Sample application data:', data.data[0]);
+       
         setApplications(data.data);
       } else {
-        console.error('❌ API returned error:', data);
+       
         setError(data.message || 'Failed to fetch applications');
       }
     } catch (err) {
-      console.error('❌ Error fetching applications:', err);
+    
       setError(err.message);
     } finally {
       setLoading(false);
@@ -121,78 +116,123 @@ const MyApplications = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">My Applications</h1>
-        <p className="text-gray-600">Track your job applications and their status</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Applications</h1>
+          <p className="text-gray-600 mt-1">Track your job applications and their status</p>
+        </div>
 
-      {/* Summary Statistics - Moved to Top */}
-      {applications.length > 0 && (
-        <Card className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="bg-blue-600 rounded-lg p-2 mr-3">
-                  <BriefcaseIcon className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Total Applications
+        {/* Summary Statistics - Responsive */}
+        {applications.length > 0 && (
+          <Card className="mb-6 sm:mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <div className="px-4 sm:px-6 py-4 sm:py-6">
+              {/* Mobile Stack Layout */}
+              <div className="block sm:hidden">
+                <div className="flex items-center mb-4">
+                  <div className="bg-blue-600 rounded-lg p-2 mr-3">
+                    <BriefcaseIcon className="h-5 w-5 text-white" />
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {applications.length} application{applications.length !== 1 ? 's' : ''}
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      Total Applications
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {applications.length} application{applications.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center bg-white rounded-lg p-3">
+                    <div className="text-lg font-bold text-yellow-600">
+                      {applications.filter(app => app.status === 'pending').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Pending</div>
+                  </div>
+                  <div className="text-center bg-white rounded-lg p-3">
+                    <div className="text-lg font-bold text-blue-600">
+                      {applications.filter(app => app.status === 'under_review').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Under Review</div>
+                  </div>
+                  <div className="text-center bg-white rounded-lg p-3">
+                    <div className="text-lg font-bold text-green-600">
+                      {applications.filter(app => app.status === 'accepted').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Accepted</div>
+                  </div>
+                  <div className="text-center bg-white rounded-lg p-3">
+                    <div className="text-lg font-bold text-red-600">
+                      {applications.filter(app => app.status === 'rejected').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Rejected</div>
                   </div>
                 </div>
               </div>
-              <div className="flex space-x-8">
-                <div className="text-center">
-                  <div className="text-lg font-bold text-yellow-600">
-                    {applications.filter(app => app.status === 'pending').length}
+
+              {/* Desktop Horizontal Layout */}
+              <div className="hidden sm:flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="bg-blue-600 rounded-lg p-2 mr-3">
+                    <BriefcaseIcon className="h-5 w-5 text-white" />
                   </div>
-                  <div className="text-xs text-gray-500">Pending</div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      Total Applications
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {applications.length} application{applications.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-blue-600">
-                    {applications.filter(app => app.status === 'under_review').length}
+                <div className="flex space-x-6 lg:space-x-8">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-yellow-600">
+                      {applications.filter(app => app.status === 'pending').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Pending</div>
                   </div>
-                  <div className="text-xs text-gray-500">Under Review</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-green-600">
-                    {applications.filter(app => app.status === 'accepted').length}
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-blue-600">
+                      {applications.filter(app => app.status === 'under_review').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Under Review</div>
                   </div>
-                  <div className="text-xs text-gray-500">Accepted</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg font-bold text-red-600">
-                    {applications.filter(app => app.status === 'rejected').length}
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-green-600">
+                      {applications.filter(app => app.status === 'accepted').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Accepted</div>
                   </div>
-                  <div className="text-xs text-gray-500">Rejected</div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-red-600">
+                      {applications.filter(app => app.status === 'rejected').length}
+                    </div>
+                    <div className="text-xs text-gray-500">Rejected</div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </Card>
-      )}
+          </Card>
+        )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
           {error}
         </div>
       )}
 
       {applications.length === 0 ? (
         <Card>
-          <div className="text-center py-12">
+          <div className="text-center py-8 sm:py-12 px-4">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <BriefcaseIcon className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No applications yet</h3>
-            <p className="text-gray-500 mb-4">Start applying to opportunities to track them here</p>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">Start applying to opportunities to track them here</p>
             <button 
               onClick={() => window.location.href = '/dashboard/opportunities'}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors w-full sm:w-auto"
             >
               Browse Opportunities
             </button>
@@ -451,6 +491,7 @@ const MyApplications = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // Layout Components
@@ -31,16 +31,66 @@ import Messages from '../pages/common/Messages';
 import Notifications from '../pages/common/Notifications';
 
 
+// Catch All Route Component
+const CatchAllRoute = () => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const location = useLocation();
+
+  console.log('🔍 CatchAllRoute check:', {
+    isAuthenticated,
+    user: user ? { id: user.id, email: user.email, role: user.role } : null,
+    loading,
+    path: location.pathname
+  });
+
+  // If still loading, show loader
+  if (loading) {
+    console.log('⏳ CatchAllRoute: Authentication loading, showing loader');
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // If authenticated and on a valid route, don't redirect
+  if (isAuthenticated && user) {
+    // Check if current path is a valid admin or coordinator route
+    const isValidAdminRoute = location.pathname.startsWith('/admin/');
+    const isValidCoordinatorRoute = location.pathname.startsWith('/coordinator/');
+    
+    if ((user.role === 'admin' && isValidAdminRoute) || 
+        (user.role === 'coordinator' && isValidCoordinatorRoute)) {
+      console.log('✅ CatchAllRoute: Valid authenticated route, staying on current page');
+      return <Navigate to={location.pathname} replace />;
+    }
+  }
+
+  // If not authenticated or invalid route, redirect to login
+  console.log('❌ CatchAllRoute: Not authenticated or invalid route, redirecting to login');
+  return <Navigate to="/" replace />;
+};
+
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
 
   console.log('🔍 ProtectedRoute check:', {
     isAuthenticated,
     user: user ? { id: user.id, email: user.email, role: user.role } : null,
     requiredRole,
-    path: window.location.pathname
+    path: window.location.pathname,
+    loading
   });
+
+  if (loading) {
+    console.log('⏳ Authentication loading, showing loader');
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     console.log('❌ Not authenticated, redirecting to login');
@@ -233,7 +283,7 @@ const AppRoutes = () => {
       } />
 
       {/* Catch all route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<CatchAllRoute />} />
     </Routes>
   );
 };

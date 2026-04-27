@@ -132,79 +132,85 @@ const MyEvents = () => {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Event Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date & Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Location
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Registration Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {events.map((event) => (
-                    <tr key={event.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{event.title || event.event_title}</div>
-                          
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <CalendarIcon className="w-4 h-4 mr-2 text-gray-400" />
-                          {new Date(event.event_date).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-500 mt-1">
-                          <ClockIcon className="w-4 h-4 mr-2 text-gray-400" />
-                          {event.event_time}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <MapPinIcon className="w-4 h-4 mr-2 text-gray-400" />
-                          {event.location}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+            <div className="space-y-4">
+              {events.map((event) => (
+                <div key={event.id} className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+                  {/* Event Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {event.title || event.event_title}
+                      </h3>
+                      <div className="flex flex-wrap gap-2 mb-3">
                         {getTypeBadge(event.event_type || event.type)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(event.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(event.registration_date || event.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Link 
-                          to={`/dashboard/events/${event.event_id}`}
-                          className="text-blue-600 hover:text-blue-900 inline-flex items-center"
-                        >
-                          View Details
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                    <div className="mt-3 sm:mt-0 sm:ml-4">
+                      <Link 
+                        to={`/dashboard/events/${event.event_id}`}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        View Details
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Event Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    {/* Date & Time */}
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <CalendarIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Date & Time</p>
+                        <p className="text-gray-600">
+                          {new Date(event.event_date).toLocaleDateString()}
+                        </p>
+                        <p className="text-gray-500 flex items-center mt-1">
+                          <ClockIcon className="w-4 h-4 mr-1" />
+                          {event.event_time}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Location */}
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <MapPinIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Location</p>
+                        <p className="text-gray-600">{event.location}</p>
+                      </div>
+                    </div>
+
+                    {/* Registration Date */}
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <CalendarIcon className="w-5 h-5 text-gray-400 mt-0.5" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">Registered On</p>
+                        <p className="text-gray-600">
+                          {new Date(event.registration_date || event.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile Action Button */}
+                  <div className="mt-4 pt-4 border-t border-gray-100 sm:hidden">
+                    <Link 
+                      to={`/dashboard/events/${event.event_id}`}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      View Event Details
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </Card>

@@ -86,7 +86,7 @@ const AlumniDirectory = () => {
       const data = await response.json();
 
       if (data.success) {
-        console.log('📊 Alumni data received:', data.data);
+        
         setAlumni(data.data);
       } else {
         setError(data.message || 'Failed to fetch alumni directory');

@@ -1,4 +1,5 @@
 import Opportunity from '../models/Opportunity.js';
+import { createContentApprovalNotification, createCoordinatorPostNotification } from './notificationController.js';
 
 // Get opportunity by ID
 export const getOpportunityById = async (req, res) => {
@@ -269,6 +270,30 @@ export const createOpportunity = async (req, res) => {
     };
 
     const opportunity = await Opportunity.create(opportunityData);
+
+    // CASE 2 & 4: Send notification to admin for approval
+    if (req.user.role === 'alumni' || req.user.role === 'coordinator') {
+      try {
+        const contentData = {
+          id: opportunity.id,
+          title: opportunity.title,
+          created_by: req.user.id,
+          department: req.user.department
+        };
+
+        if (req.user.role === 'alumni') {
+          // CASE 2: Alumni creates opportunity -> Notify admin
+          await createContentApprovalNotification(contentData, 'opportunity');
+          console.log(`📢 CASE 2: Opportunity approval notification sent to admins for: ${opportunity.title}`);
+        } else if (req.user.role === 'coordinator') {
+          // CASE 4: Coordinator creates opportunity -> Notify admin
+          await createCoordinatorPostNotification(contentData, req.user.id);
+          console.log(`📢 CASE 4: Coordinator opportunity approval notification sent to admins for: ${opportunity.title}`);
+        }
+      } catch (notificationError) {
+        console.error('❌ Failed to send opportunity approval notification:', notificationError.message);
+      }
+    }
 
     // If admin created opportunity, send email to all alumni
     if (req.user.role === 'admin') {

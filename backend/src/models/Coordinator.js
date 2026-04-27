@@ -115,7 +115,7 @@ export class Coordinator {
       );
       const coordinator = result.rows[0];
       if (coordinator) {
-        console.log(`✅ Coordinator ${id} status updated to 'active' after password reset`);
+      
         return {
           ...coordinator,
           status: coordinator.status || 'active'

@@ -512,7 +512,7 @@ const Events = () => {
           <h1 className="text-2xl font-bold text-gray-900">Event Management</h1>
           <p className="text-gray-600">Manage and organize events for alumni</p>
         </div>
-        {user?.role === 'admin' && (
+        
           <Button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2"
@@ -520,7 +520,7 @@ const Events = () => {
             <PlusIcon className="h-5 w-5" />
             Add Event
           </Button>
-        )}
+        
       </div>
 
       {/* Success/Error Messages */}

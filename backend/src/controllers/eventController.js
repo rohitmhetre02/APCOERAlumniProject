@@ -2,6 +2,7 @@ import Event from '../models/Event.js';
 import EventRegistration from '../models/EventRegistration.js';
 import { validationResult } from 'express-validator';
 import { pool } from '../config/database.js';
+import { createContentApprovalNotification, createCoordinatorPostNotification } from './notificationController.js';
 
 // @desc    Get single event by ID
 // @route   GET /api/events/:id
@@ -87,17 +88,25 @@ export const createEvent = async (req, res) => {
 
     const event = await Event.create(eventData);
 
-    // If coordinator or alumni created event, send notification to admin for approval
-    if (req.user.role === 'coordinator' || req.user.role === 'alumni') {
+    // CASE 2 & 4: Send notification to admin for approval
+    if (req.user.role === 'alumni' || req.user.role === 'coordinator') {
       try {
-        const { createNotification } = await import('./notificationController.js');
-        await createNotification({
-          user_id: null, // For all admins
-          message: `New event submitted for approval: "${event.title}" by ${req.user.first_name} ${req.user.last_name} (${req.user.email}).`,
-          type: 'event_approval',
+        const contentData = {
+          id: event.id,
+          title: event.title,
+          created_by: req.user.id,
           department: req.user.department
-        });
-        console.log(`📢 Event approval notification sent to admins for: ${event.title}`);
+        };
+
+        if (req.user.role === 'alumni') {
+          // CASE 2: Alumni creates event -> Notify admin
+          await createContentApprovalNotification(contentData, 'event');
+          console.log(`📢 CASE 2: Event approval notification sent to admins for: ${event.title}`);
+        } else if (req.user.role === 'coordinator') {
+          // CASE 4: Coordinator creates event -> Notify admin
+          await createCoordinatorPostNotification(contentData, req.user.id);
+          console.log(`📢 CASE 4: Coordinator event approval notification sent to admins for: ${event.title}`);
+        }
       } catch (notificationError) {
         console.error('❌ Failed to send event approval notification:', notificationError.message);
       }
@@ -235,7 +244,7 @@ export const updateEvent = async (req, res) => {
     }
 
     // Check if user has permission to update this event
-    if (req.user.role === 'coordinator' && event.created_by !== req.user.id) {
+    if (req.user.role !== 'admin' && event.created_by !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. You can only update your own events.'

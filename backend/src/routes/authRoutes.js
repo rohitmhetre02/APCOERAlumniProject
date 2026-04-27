@@ -8,7 +8,15 @@ import {
   approveAlumni,
   resetPassword,
   getProfile,
-  updateProfile
+  updateProfile,
+  verifyPassword,
+  sendEmailUpdateOTP,
+  updateEmail,
+  updatePassword,
+  updatePasswordWithOTP,
+  sendForgetPasswordOTP,
+  verifyForgetPasswordOTP,
+  deleteAccount
 } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -123,5 +131,45 @@ router.get('/profile', authenticateToken, getProfile);
 // @desc    Update user profile
 // @access  Private
 router.put('/profile', authenticateToken, updateProfile);
+
+// @route   POST /api/auth/verify-password
+// @desc    Verify user password for sensitive operations
+// @access  Private
+router.post('/verify-password', authenticateToken, verifyPassword);
+
+// @route   POST /api/auth/update-password
+// @desc    Update user password
+// @access  Private
+router.post('/update-password', authenticateToken, updatePassword);
+
+// @route   DELETE /api/auth/delete-account
+// @desc    Delete user account
+// @access  Private
+router.delete('/delete-account', authenticateToken, deleteAccount);
+
+// @route   POST /api/auth/update-password-with-otp
+// @desc    Update password using OTP (forget password)
+// @access  Private
+router.post('/update-password-with-otp', authenticateToken, updatePasswordWithOTP);
+
+// @route   POST /api/auth/send-forget-password-otp
+// @desc    Send OTP for forget password
+// @access  Private
+router.post('/send-forget-password-otp', authenticateToken, sendForgetPasswordOTP);
+
+// @route   POST /api/auth/verify-forget-password-otp
+// @desc    Verify OTP for forget password
+// @access  Private
+router.post('/verify-forget-password-otp', authenticateToken, verifyForgetPasswordOTP);
+
+// @route   POST /api/auth/send-email-update-otp
+// @desc    Send OTP for email update
+// @access  Private
+router.post('/send-email-update-otp', authenticateToken, sendEmailUpdateOTP);
+
+// @route   PUT /api/auth/update-email
+// @desc    Update user email with OTP verification
+// @access  Private
+router.put('/update-email', authenticateToken, updateEmail);
 
 export default router;

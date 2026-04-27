@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, Fragment, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext.jsx';
+import { useMessages } from '../../context/MessageContext';
 import { 
   BellIcon, 
   ChatBubbleLeftRightIcon,
@@ -15,7 +16,42 @@ const Topbar = ({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarColla
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const { logout, user } = useAuth();
   const { unreadCount, socketConnected } = useNotifications();
+  const { socketConnected: messageSocketConnected, markAsRead } = useMessages();
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const navigate = useNavigate();
+
+  // Read admin unread counts from localStorage
+  useEffect(() => {
+    const updateUnreadCount = () => {
+      try {
+        const savedCounts = localStorage.getItem('admin_unread_counts');
+        if (savedCounts) {
+          const counts = JSON.parse(savedCounts);
+          const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+          setMessageUnreadCount(total);
+        } else {
+          setMessageUnreadCount(0);
+        }
+      } catch (error) {
+        console.error('Error reading admin unread counts:', error);
+        setMessageUnreadCount(0);
+      }
+    };
+
+    updateUnreadCount();
+    
+    // Update every second to sync with Messages page
+    const interval = setInterval(updateUnreadCount, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Custom markAsRead that clears localStorage
+  const handleMarkAsRead = () => {
+    localStorage.removeItem('admin_unread_counts');
+    setMessageUnreadCount(0);
+    if (markAsRead) markAsRead();
+  };
 
   const handleLogout = () => {
     logout();
@@ -103,10 +139,21 @@ const Topbar = ({ sidebarOpen, setSidebarOpen, sidebarCollapsed, setSidebarColla
           {/* Message Icon */}
           <Link 
             to={getMessagesPath()}
-            className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            onClick={handleMarkAsRead}
+            className={`relative p-2 hover:bg-gray-100 rounded-lg transition-colors ${
+              messageUnreadCount > 0 ? (user?.role === 'coordinator' ? 'text-green-600' : 'text-blue-600') : 'text-gray-600'
+            }`}
+            title={`Messages ${messageUnreadCount > 0 ? `(${messageUnreadCount} unread)` : ''}`}
           >
             <ChatBubbleLeftRightIcon className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+            {messageUnreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
+              </span>
+            )}
+            {messageSocketConnected && (
+              <span className="absolute bottom-1 right-1 w-2 h-2 bg-green-500 rounded-full" title="Connected"></span>
+            )}
           </Link>
         </div>
       </div>

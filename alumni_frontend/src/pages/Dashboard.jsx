@@ -60,7 +60,7 @@ const Dashboard = () => {
             'Content-Type': 'application/json'
           }
         }),
-        fetch(`${import.meta.env.VITE_API_URL}/news/approved`, {
+        fetch(`${import.meta.env.VITE_API_URL}/news?status=approved`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
