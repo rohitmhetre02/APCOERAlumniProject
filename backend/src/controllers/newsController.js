@@ -1,13 +1,18 @@
 import News from '../models/News.js';
 import { validationResult } from 'express-validator';
+import { sendCustomEmail } from '../services/emailService.js';
+import { pool } from '../config/database.js';
 
 // @desc    Create new news article
 // @route   POST /api/news
 // @access  Admin, Coordinator
 export const createNews = async (req, res) => {
   try {
+    console.log('🔍 News creation request body:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ News validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
@@ -50,11 +55,100 @@ export const createNews = async (req, res) => {
       }
     }
 
+    // If admin created news, send email to all alumni and coordinators
+    if (req.user.role === 'admin') {
+      try {
+        console.log(`📧 Admin created news, sending notifications to all alumni and coordinators...`);
+        
+        // Get all active alumni and coordinators
+        const recipientsQuery = `
+          SELECT email, first_name, last_name, role 
+          FROM users 
+          WHERE (role = 'alumni' OR role = 'coordinator') 
+          AND is_approved = true 
+          AND status = 'active'
+        `;
+        const recipientsResult = await pool.query(recipientsQuery);
+        
+        if (recipientsResult.rows.length > 0) {
+          console.log(`👥 Found ${recipientsResult.rows.length} active recipients to notify`);
+          
+          // Create email template for news notification
+          const newsEmailTemplate = {
+            subject: `📰 Latest News: ${news.title}`,
+            html: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Latest News - APCOER Alumni</title>
+                <style>
+                  body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                  .header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+                  .content { padding: 20px; }
+                  .news-title { color: #2c3e50; font-size: 24px; margin-bottom: 10px; }
+                  .news-meta { color: #7f8c8d; font-size: 14px; margin-bottom: 20px; }
+                  .news-content { margin-bottom: 20px; }
+                  .footer { background: #ecf0f1; padding: 20px; text-align: center; font-size: 12px; }
+                </style>
+              </head>
+              <body>
+                <div class="header">
+                  <h1>📰 APCOER Alumni News</h1>
+                  <p>Stay updated with the latest from your alma mater</p>
+                </div>
+                <div class="content">
+                  <h2 class="news-title">${news.title}</h2>
+                  <div class="news-meta">
+                    Category: ${news.category} | Published: ${new Date(news.created_at).toLocaleDateString()}
+                  </div>
+                  <div class="news-content">
+                    ${news.short_content || news.full_content.substring(0, 200) + '...'}
+                  </div>
+                  <p>
+                    <a href="http://localhost:3000/news/${news.id}" style="background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                      Read Full Article
+                    </a>
+                  </p>
+                </div>
+                <div class="footer">
+                  <p>&copy; 2025 APCOER Alumni Portal. All rights reserved.</p>
+                  <p>You received this email because you are an active member of the APCOER Alumni community.</p>
+                </div>
+              </body>
+              </html>
+            `
+          };
+          
+          // Send individual emails to each recipient
+          let sentCount = 0;
+          let failedCount = 0;
+          
+          for (const recipient of recipientsResult.rows) {
+            try {
+              await sendCustomEmail(recipient.email, newsEmailTemplate.subject, newsEmailTemplate.html);
+              sentCount++;
+            } catch (error) {
+              console.error(`❌ Failed to send news email to ${recipient.email}:`, error.message);
+              failedCount++;
+            }
+          }
+          
+          console.log(`✅ News notification emails completed: ${sentCount}/${recipientsResult.rows.length} sent successfully`);
+        } else {
+          console.log(`ℹ️ No active recipients found to notify`);
+        }
+      } catch (emailError) {
+        console.error('❌ Failed to send news notification emails:', emailError.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: req.user.role === 'coordinator' 
         ? 'News article submitted successfully! It is now pending admin approval.'
-        : 'News article created and published successfully!',
+        : 'News article created and published successfully! Notification emails have been sent to all alumni and coordinators.',
       data: news
     });
   } catch (error) {

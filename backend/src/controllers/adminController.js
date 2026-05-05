@@ -3,7 +3,7 @@ import User from '../models/User.js';
 import Event from '../models/Event.js';
 import Opportunity from '../models/Opportunity.js';
 import News from '../models/News.js';
-import { sendApprovalEmail } from '../services/emailService.js';
+import { sendAccountApprovedEmail, sendAccountRejectedEmail } from '../services/emailService.js';
 import { pool } from '../config/database.js';
 
 // Profile approval functions removed - now handled by coordinators only

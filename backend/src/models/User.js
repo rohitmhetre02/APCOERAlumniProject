@@ -397,10 +397,9 @@ class User {
     for (const field of Object.keys(updateData)) {
       if (allowedFields.includes(field)) {
         if (field === 'password') {
-          // Hash the password before updating
-          const hashedPassword = await bcrypt.hash(updateData[field], 10);
+          // Password should already be hashed
           updates.push(`${field} = $${paramIndex}`);
-          values.push(hashedPassword);
+          values.push(updateData[field]);
         } else {
           updates.push(`${field} = $${paramIndex}`);
           values.push(updateData[field]);

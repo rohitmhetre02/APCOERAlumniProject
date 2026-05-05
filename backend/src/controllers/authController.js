@@ -1,6 +1,7 @@
 import { validationResult } from 'express-validator';
 import User from '../models/User.js';
-import { sendRegistrationPendingEmail, sendEmail } from '../services/emailService.js';
+import { pool } from '../config/database.js';
+import { sendRegistrationPendingEmail, sendCustomEmail } from '../services/emailService.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { getOTPTemplate, getForgetPasswordOTPTemplate } from '../utils/emailTemplates.js';
@@ -51,13 +52,19 @@ export const register = async (req, res) => {
 
     // Send registration pending email
     try {
-      await sendRegistrationPendingEmail(
+      console.log('📧 Attempting to send registration email...');
+      const emailResult = await sendRegistrationPendingEmail(
         newUser.email,
         `${newUser.first_name} ${newUser.last_name}`
       );
-      console.log(`📧 Registration pending email sent to: ${newUser.email}`);
+      console.log(`✅ Registration pending email queued successfully:`, emailResult);
+      console.log(`📧 Email queued for: ${newUser.email}`);
     } catch (emailError) {
       console.error('❌ Failed to send registration email:', emailError.message);
+      console.error('❌ Email error details:', {
+        message: emailError.message,
+        stack: emailError.stack
+      });
       // Continue with registration even if email fails
     }
 
@@ -142,14 +149,8 @@ export const loginAlumni = async (req, res) => {
       status: user.status
     });
 
-    // Verify password using bcrypt
+    // Verify password
     const isValidPassword = await User.verifyPassword(password, user.password);
-    
-    console.log('Password verification:', {
-      providedPassword: password,
-      isValidPassword,
-      hashedPassword: user.password
-    });
     
     if (!isValidPassword) {
       return res.status(401).json({
@@ -228,6 +229,7 @@ export const resetPassword = async (req, res) => {
 
     // Hash new password
     const hashedPassword = await User.hashPassword(newPassword);
+    console.log('🔐 Password hashed successfully for reset');
 
     // Update user password and status
     await User.update(userId, {
@@ -235,6 +237,7 @@ export const resetPassword = async (req, res) => {
       is_first_login: false,
       status: 'active'
     });
+    console.log('✅ User password and status updated successfully');
 
     res.status(200).json({
       status: 'success',
@@ -581,7 +584,7 @@ export const sendEmailUpdateOTP = async (req, res) => {
       const { subject, html } = getOTPTemplate(userName, otp, newEmail);
       
       // Send email
-      await sendEmail(newEmail, subject, html);
+      await sendCustomEmail(newEmail, subject, html);
       console.log(`✅ OTP email sent successfully to ${newEmail}`);
       
       res.json({
@@ -836,7 +839,7 @@ export const sendForgetPasswordOTP = async (req, res) => {
     // Send OTP via email service
     try {
       const { subject, html } = getForgetPasswordOTPTemplate(userName, otp);
-      await sendEmail(userEmail, subject, html);
+      await sendCustomEmail(userEmail, subject, html);
       console.log(`📧 OTP email sent successfully to ${userEmail}`);
     } catch (emailError) {
       console.error('❌ Failed to send OTP email:', emailError);
@@ -995,3 +998,351 @@ export const deleteAccount = async (req, res) => {
 
 // Legacy login function for backward compatibility
 export const login = loginAlumni;
+
+// Store OTPs in memory (in production, use Redis or database)
+const otpStore = new Map();
+
+// @desc    Send OTP for forgot password
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Check if user exists and is alumni
+    const userQuery = `
+      SELECT id, first_name, last_name, email 
+      FROM users 
+      WHERE email = $1 AND role = 'alumni'
+    `;
+    const userResult = await pool.query(userQuery, [email]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No alumni account found with this email address'
+      });
+    }
+
+    const user = userResult.rows[0];
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store OTP with expiration (15 minutes)
+    otpStore.set(email, {
+      otp: otp,
+      expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+      attempts: 0
+    });
+
+    // Send OTP email
+    const { getForgetPasswordOTPTemplate } = await import('../utils/emailTemplates.js');
+    const emailTemplate = getForgetPasswordOTPTemplate({
+      userName: `${user.first_name} ${user.last_name}`,
+      otp: otp
+    });
+
+    await sendCustomEmail(email, emailTemplate.subject, emailTemplate.html);
+
+    console.log(`🔑 OTP sent to ${email}: ${otp}`);
+
+    res.json({
+      success: true,
+      message: 'OTP sent to your email address'
+    });
+  } catch (error) {
+    console.error('❌ Error sending OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP'
+    });
+  }
+};
+
+// @desc    Verify OTP
+// @route   POST /api/auth/verify-otp
+// @access  Public
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and OTP are required'
+      });
+    }
+
+    // Check both alumni and coordinator OTP stores
+    let storedData = otpStore.get(email);
+    if (!storedData) {
+      storedData = coordinatorOtpStore.get(email);
+    }
+
+    if (!storedData) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP not found or expired'
+      });
+    }
+
+    // Check if OTP has expired
+    if (Date.now() > storedData.expiresAt) {
+      otpStore.delete(email);
+      coordinatorOtpStore.delete(email);
+      return res.status(400).json({
+        success: false,
+        message: 'OTP has expired'
+      });
+    }
+
+    // Check attempts (max 3 attempts)
+    if (storedData.attempts >= 3) {
+      otpStore.delete(email);
+      coordinatorOtpStore.delete(email);
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum attempts exceeded. Please request a new OTP'
+      });
+    }
+
+    // Verify OTP
+    if (storedData.otp !== otp) {
+      storedData.attempts++;
+      return res.status(400).json({
+        success: false,
+        message: `Invalid OTP. ${3 - storedData.attempts} attempts remaining`
+      });
+    }
+
+    // OTP is valid, mark as verified
+    storedData.verified = true;
+
+    res.json({
+      success: true,
+      message: 'OTP verified successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error verifying OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify OTP'
+    });
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPasswordWithOTP = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, OTP, and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    const storedData = otpStore.get(email);
+
+    if (!storedData || !storedData.verified || storedData.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Hash the new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password in database
+    const updateQuery = `
+      UPDATE users 
+      SET password = $2, updated_at = CURRENT_TIMESTAMP 
+      WHERE email = $1 AND role = 'alumni'
+      RETURNING id, first_name, last_name, email
+    `;
+    const updateResult = await pool.query(updateQuery, [email, hashedPassword]);
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Clear OTP from store
+    otpStore.delete(email);
+
+    const updatedUser = updateResult.rows[0];
+
+    console.log(`🔑 Password reset successfully for ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error resetting password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
+    });
+  }
+};
+
+// Store OTPs for coordinators (separate from alumni)
+const coordinatorOtpStore = new Map();
+
+// @desc    Send OTP for coordinator forgot password
+// @route   POST /api/auth/forgot-password-coordinator
+// @access  Public
+export const forgotPasswordCoordinator = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    // Check if user exists and is coordinator
+    const userQuery = `
+      SELECT id, first_name, last_name, email 
+      FROM users 
+      WHERE email = $1 AND role = 'coordinator'
+    `;
+    const userResult = await pool.query(userQuery, [email]);
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No coordinator account found with this email address'
+      });
+    }
+
+    const user = userResult.rows[0];
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Store OTP with expiration (15 minutes)
+    coordinatorOtpStore.set(email, {
+      otp: otp,
+      expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
+      attempts: 0
+    });
+
+    // Send OTP email
+    const { getForgetPasswordOTPTemplate } = await import('../utils/emailTemplates.js');
+    const emailTemplate = getForgetPasswordOTPTemplate({
+      userName: `${user.first_name} ${user.last_name}`,
+      otp: otp
+    });
+
+    await sendCustomEmail(email, emailTemplate.subject, emailTemplate.html);
+
+    console.log(`🔑 Coordinator OTP sent to ${email}: ${otp}`);
+
+    res.json({
+      success: true,
+      message: 'OTP sent to your email address'
+    });
+  } catch (error) {
+    console.error('❌ Error sending coordinator OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP'
+    });
+  }
+};
+
+// @desc    Reset coordinator password
+// @route   POST /api/auth/reset-password-coordinator
+// @access  Public
+export const resetPasswordCoordinator = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, OTP, and new password are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    const storedData = coordinatorOtpStore.get(email);
+
+    if (!storedData || !storedData.verified || storedData.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+
+    // Hash the new password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update password in database
+    const updateQuery = `
+      UPDATE users 
+      SET password = $2, updated_at = CURRENT_TIMESTAMP 
+      WHERE email = $1 AND role = 'coordinator'
+      RETURNING id, first_name, last_name, email
+    `;
+    const updateResult = await pool.query(updateQuery, [email, hashedPassword]);
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coordinator not found'
+      });
+    }
+
+    // Clear OTP from store
+    coordinatorOtpStore.delete(email);
+
+    const updatedUser = updateResult.rows[0];
+
+    console.log(`🔑 Coordinator password reset successfully for ${email}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error resetting coordinator password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
+    });
+  }
+};

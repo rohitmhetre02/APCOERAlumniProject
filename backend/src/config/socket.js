@@ -16,6 +16,19 @@ export const initializeSocket = (server) => {
     transports: ["websocket", "polling"], // Add polling as fallback
     pingTimeout: 60000,
     pingInterval: 25000,
+    upgradeTimeout: 30000,
+    maxHttpBufferSize: 1e8, // 100 MB
+    allowEIO3: true, // Support older clients
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    // Add connection stability options
+    connectTimeout: 45000,
+    rememberUpgrade: true,
+    forceNew: false,
+    // Namespace handling
+    path: '/socket.io',
   });
 
   io.on("connection", (socket) => {
@@ -24,9 +37,17 @@ export const initializeSocket = (server) => {
     // ✅ AUTO AUTH FROM HANDSHAKE (BEST PRACTICE)
     const { userId, role } = socket.handshake.auth || {};
 
+    // Prevent duplicate connections for same user
     if (userId) {
+      // Leave any existing rooms for this user
+      socket.leave(userId);
+      // Join fresh room
       socket.join(userId);
       console.log(`👤 Joined user room: ${userId}`);
+      
+      // Store user info on socket for reference
+      socket.userId = userId;
+      socket.userRole = role;
     }
 
     if (role === "admin") {
@@ -39,6 +60,21 @@ export const initializeSocket = (server) => {
       socket.join(roomName);
       console.log(`📘 Joined coordinator room: ${roomName}`);
     }
+
+    // Handle socket disconnection properly
+    socket.on("disconnecting", (reason) => {
+      console.log(`🔄 Socket ${socket.id} is disconnecting...`);
+      // Clean up rooms before disconnect
+      if (socket.userId) {
+        socket.leave(socket.userId);
+      }
+      if (socket.userRole === "admin") {
+        socket.leave("admin_room");
+      }
+      if (socket.userRole === "coordinator" && socket.userId) {
+        socket.leave(`coordinator_${socket.userId}`);
+      }
+    });
 
     // ✅ OPTIONAL: manual auth (fallback)
     socket.on("authenticate", (userData) => {
@@ -76,16 +112,67 @@ export const initializeSocket = (server) => {
       });
     });
 
+    // ✅ CLEAR UNREAD COUNT HANDLING
+    socket.on("clear-unread-count", async (data) => {
+      const { userId, contactId } = data;
+      console.log(`📊 Clearing unread count for user ${userId}, contact ${contactId}`);
+
+      try {
+        // Import pool for database operations
+        const { pool } = await import('../config/database.js');
+        
+        // Mark messages as read in database
+        const markAsReadQuery = `
+          UPDATE messages 
+          SET is_read = true 
+          WHERE receiver_id = $1 AND sender_id = $2 AND is_read = false
+        `;
+        await pool.query(markAsReadQuery, [userId, contactId]);
+
+        // Emit count update to user
+        io.to(userId).emit('message-count-update', {
+          senderId: contactId,
+          unreadCount: 0
+        });
+
+        console.log(`✅ Cleared unread count for ${userId} from ${contactId}`);
+      } catch (error) {
+        console.error('❌ Error clearing unread count:', error);
+      }
+    });
+
     socket.on("disconnect", (reason) => {
       console.log(`❌ Socket disconnected: ${socket.id} - Reason: ${reason}`);
+      
+      // Log additional info for debugging
+      if (reason === 'client namespace disconnect') {
+        console.log(`📝 Client manually disconnected from namespace`);
+      } else if (reason === 'ping timeout') {
+        console.log(`📝 Ping timeout - client didn't respond in time`);
+      } else if (reason === 'transport close') {
+        console.log(`📝 Transport connection closed`);
+      }
     });
 
     socket.on("error", (error) => {
-      console.error(`🔌 Socket error for ${socket.id}:`, error);
+      console.error(`🔌 Socket error for ${socket.id}:`, error.message);
     });
 
     socket.on("connect_error", (error) => {
-      console.error(`🔌 Connect error for ${socket.id}:`, error);
+      console.error(`🔌 Connect error for ${socket.id}:`, error.message);
+    });
+
+    // Handle reconnection attempts
+    socket.on("reconnect_attempt", (attemptNumber) => {
+      console.log(`🔄 Socket ${socket.id} reconnection attempt: ${attemptNumber}`);
+    });
+
+    socket.on("reconnect", (attemptNumber) => {
+      console.log(`✅ Socket ${socket.id} reconnected after ${attemptNumber} attempts`);
+    });
+
+    socket.on("reconnect_failed", () => {
+      console.log(`❌ Socket ${socket.id} failed to reconnect after all attempts`);
     });
   });
 

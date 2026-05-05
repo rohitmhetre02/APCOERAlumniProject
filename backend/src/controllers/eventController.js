@@ -3,6 +3,7 @@ import EventRegistration from '../models/EventRegistration.js';
 import { validationResult } from 'express-validator';
 import { pool } from '../config/database.js';
 import { createContentApprovalNotification, createCoordinatorPostNotification } from './notificationController.js';
+import { sendCustomEmail } from '../services/emailService.js';
 
 // @desc    Get single event by ID
 // @route   GET /api/events/:id
@@ -115,9 +116,51 @@ export const createEvent = async (req, res) => {
     // If admin created event, send email to all alumni and coordinators
     if (req.user.role === 'admin') {
       try {
-        const { sendAdminEventNotificationEmails } = await import('./emailController.js');
-        await sendAdminEventNotificationEmails(event);
-        console.log(`📧 Event notification emails sent to alumni and coordinators for: ${event.title}`);
+        console.log(`📧 Admin created event, sending notifications to all alumni and coordinators...`);
+        
+        // Get all active alumni and coordinators
+        const recipientsQuery = `
+          SELECT email, first_name, last_name, role 
+          FROM users 
+          WHERE (role = 'alumni' OR role = 'coordinator') 
+          AND is_approved = true 
+          AND status = 'active'
+        `;
+        const recipientsResult = await pool.query(recipientsQuery);
+        
+        if (recipientsResult.rows.length > 0) {
+          console.log(`👥 Found ${recipientsResult.rows.length} active recipients to notify`);
+          
+          // Create email template for recipients
+          const { getEventNotificationTemplate } = await import('../utils/emailTemplates.js');
+          const emailTemplate = getEventNotificationTemplate({
+            recipientName: 'Alumni Member',
+            eventTitle: event.title,
+            eventDate: event.event_date,
+            eventTime: event.event_time,
+            eventDescription: event.description ? event.description.substring(0, 200) + '...' : '',
+            location: event.location,
+            eventMode: event.event_mode
+          });
+          
+          // Send individual emails to each recipient
+          let sentCount = 0;
+          let failedCount = 0;
+          
+          for (const recipient of recipientsResult.rows) {
+            try {
+              await sendCustomEmail(recipient.email, emailTemplate.subject, emailTemplate.html);
+              sentCount++;
+            } catch (error) {
+              console.error(`❌ Failed to send to ${recipient.email}:`, error.message);
+              failedCount++;
+            }
+          }
+          
+          console.log(`✅ Event notification emails completed: ${sentCount}/${recipientsResult.rows.length} sent successfully`);
+        } else {
+          console.log(`ℹ️ No active recipients found to notify`);
+        }
       } catch (emailError) {
         console.error('❌ Failed to send event notification emails:', emailError.message);
       }
@@ -309,7 +352,7 @@ export const approveEvent = async (req, res) => {
       console.log(`📧 HTML length: ${emailTemplate.html.length}`);
       
       console.log(`📧 About to send event approval email...`);
-      const emailResult = await sendEmail(updatedEvent.author_email, emailTemplate.subject, emailTemplate.html);
+      const emailResult = await sendCustomEmail(updatedEvent.author_email, emailTemplate.subject, emailTemplate.html);
       console.log(`✅ Event approval email sent to event creator: ${updatedEvent.author_email}`);
       console.log(`📧 Email result:`, emailResult);
     } catch (emailError) {
@@ -321,10 +364,13 @@ export const approveEvent = async (req, res) => {
     try {
       const { createNotification } = await import('./notificationController.js');
       await createNotification({
-        user_id: event.created_by,
-        message: `Your event "${event.title}" has been approved and is now live!`,
-        type: 'event_approved',
-        department: event.department
+        receiver_id: updatedEvent.created_by,
+        sender_id: req.user.userId, // Admin who approved
+        role_target: 'alumni', // Target role for the notification
+        message: `Your event "${updatedEvent.title}" has been approved and is now live!`,
+        type: 'content_approved',
+        department: updatedEvent.department,
+        reference_id: updatedEvent.id
       });
       console.log(`📢 Approval notification sent to event creator for: ${event.title}`);
     } catch (notificationError) {
@@ -367,9 +413,22 @@ export const approveEvent = async (req, res) => {
         const alumniEmails = alumniResult.rows.map(alumni => alumni.email);
         console.log(`📧 About to send bulk event emails to ${alumniEmails.length} alumni...`);
         
-        const bulkResult = await sendBulkEmail(alumniEmails, emailTemplate.subject, emailTemplate.html);
-        console.log(`✅ Bulk event notification email completed: ${bulkResult.totalSent}/${bulkResult.totalSent + bulkResult.totalFailed} sent successfully`);
-        console.log(`📧 Bulk event result details:`, bulkResult);
+        // Send individual emails to each alumni
+        let sentCount = 0;
+        let failedCount = 0;
+        
+        for (const email of alumniEmails) {
+          try {
+            await sendCustomEmail(email, emailTemplate.subject, emailTemplate.html);
+            sentCount++;
+          } catch (error) {
+            console.error(`❌ Failed to send event email to ${email}:`, error.message);
+            failedCount++;
+          }
+        }
+        
+        console.log(`✅ Bulk event notification email completed: ${sentCount}/${alumniEmails.length} sent successfully`);
+        console.log(`📧 Event emails - Sent: ${sentCount}, Failed: ${failedCount}`);
       } else {
         console.log(`ℹ️ No approved alumni found to notify about event`);
       }
@@ -427,7 +486,7 @@ export const rejectEvent = async (req, res) => {
       const { getEventRejectionTemplate } = await import('../utils/emailTemplates.js');
       
       const emailTemplate = getEventRejectionTemplate(updatedEvent, rejection_reason);
-      await sendEmail(updatedEvent.author_email, emailTemplate.subject, emailTemplate.html);
+      await sendCustomEmail(updatedEvent.author_email, emailTemplate.subject, emailTemplate.html);
       console.log(`✅ Rejection email sent to event creator: ${updatedEvent.author_email}`);
     } catch (emailError) {
       console.error('❌ Failed to send rejection email to creator:', emailError.message);
@@ -437,10 +496,13 @@ export const rejectEvent = async (req, res) => {
     try {
       const { createNotification } = await import('./notificationController.js');
       await createNotification({
-        user_id: event.created_by,
-        message: `Your event "${event.title}" has been rejected${rejection_reason ? `. Reason: ${rejection_reason}` : '. Please contact admin for details.'}`,
-        type: 'event_rejected',
-        department: event.department
+        receiver_id: updatedEvent.created_by,
+        sender_id: req.user.userId, // Admin who rejected
+        role_target: 'alumni', // Target role for the notification
+        message: `Your event "${updatedEvent.title}" has been rejected${rejection_reason ? `. Reason: ${rejection_reason}` : '. Please contact admin for details.'}`,
+        type: 'content_rejected',
+        department: updatedEvent.department,
+        reference_id: updatedEvent.id
       });
       console.log(`📢 Rejection notification sent to event creator for: ${event.title}`);
     } catch (notificationError) {
@@ -957,8 +1019,23 @@ export const debugAdminEventEmail = async (req, res) => {
         };
         
         console.log('📧 About to test bulk email sending...');
-        await sendAdminEventNotificationEmails(mockEvent);
-        console.log('✅ Bulk email test completed');
+        // Test with a simple email to first recipient
+        if (emailResult.rows.length > 0) {
+          const testRecipient = emailResult.rows[0];
+          const { getEventNotificationTemplate } = await import('../utils/emailTemplates.js');
+          const emailTemplate = getEventNotificationTemplate({
+            recipientName: testRecipient.first_name,
+            eventTitle: mockEvent.title,
+            eventDate: mockEvent.event_date,
+            eventTime: mockEvent.event_time,
+            eventDescription: mockEvent.description,
+            location: mockEvent.location,
+            eventMode: mockEvent.event_mode
+          });
+          
+          await sendCustomEmail(testRecipient.email, emailTemplate.subject, emailTemplate.html);
+          console.log(`✅ Test email sent to ${testRecipient.email}`);
+        }
       } catch (bulkEmailError) {
         console.error('❌ Bulk email test failed:', bulkEmailError.message);
       }

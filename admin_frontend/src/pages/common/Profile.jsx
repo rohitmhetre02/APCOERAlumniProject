@@ -3,6 +3,9 @@ import { useAuth } from '../../context/AuthContext';
 import { UserCircleIcon, EnvelopeIcon, PhoneIcon, BuildingOfficeIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Card from '../../components/ui/Card';
 
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
+
 const Profile = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -35,7 +38,7 @@ const Profile = () => {
       setLoading(true);
       setError('');
       
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -126,7 +129,7 @@ const Profile = () => {
   // Update profile in database
   const handleSave = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       if (!token) {
         throw new Error('No authentication token found');
       }

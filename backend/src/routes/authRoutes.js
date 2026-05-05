@@ -16,7 +16,12 @@ import {
   updatePasswordWithOTP,
   sendForgetPasswordOTP,
   verifyForgetPasswordOTP,
-  deleteAccount
+  deleteAccount,
+  forgotPassword,
+  verifyOTP,
+  resetPasswordWithOTP,
+  forgotPasswordCoordinator,
+  resetPasswordCoordinator
 } from '../controllers/authController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -171,5 +176,32 @@ router.post('/send-email-update-otp', authenticateToken, sendEmailUpdateOTP);
 // @desc    Update user email with OTP verification
 // @access  Private
 router.put('/update-email', authenticateToken, updateEmail);
+
+// Forgot Password Routes (Public)
+// @route   POST /api/auth/forgot-password
+// @desc    Send OTP for forgot password (alumni only)
+// @access  Public
+router.post('/forgot-password', forgotPassword);
+
+// @route   POST /api/auth/verify-otp
+// @desc    Verify OTP for forgot password
+// @access  Public
+router.post('/verify-otp', verifyOTP);
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password with OTP
+// @access  Public
+router.post('/reset-password', resetPasswordWithOTP);
+
+// Coordinator Forgot Password Routes (Public)
+// @route   POST /api/auth/forgot-password-coordinator
+// @desc    Send OTP for forgot password (coordinator only)
+// @access  Public
+router.post('/forgot-password-coordinator', forgotPasswordCoordinator);
+
+// @route   POST /api/auth/reset-password-coordinator
+// @desc    Reset coordinator password with OTP
+// @access  Public
+router.post('/reset-password-coordinator', resetPasswordCoordinator);
 
 export default router;

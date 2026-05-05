@@ -272,6 +272,15 @@ const CLEAN_API_BASE_URL = API_BASE_URL.endsWith('/api') ? API_BASE_URL.slice(0,
       localStorage.setItem('alumni_unread_counts', JSON.stringify(newCounts));
       return newCounts;
     });
+
+    // Emit socket event to clear unread count on server and sync across components
+    if (socket) {
+      socket.emit('clear-unread-count', {
+        userId: user.id,
+        contactId: contact.id
+      });
+      console.log(`📊 Cleared unread count for contact ${contact.id}`);
+    }
   };
 
   // Initialize on mount and load unread counts from localStorage

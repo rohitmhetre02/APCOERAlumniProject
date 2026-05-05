@@ -26,7 +26,7 @@ const newsValidation = [
   body('category').notEmpty().withMessage('Category is required'),
   body('full_content').notEmpty().withMessage('Full content is required'),
   body('short_content').optional().isString().withMessage('Short content must be a string'),
-  body('image_url').optional().isURL().withMessage('Image URL must be valid'),
+  body('image_url').optional().isString().withMessage('Image URL must be a string'),
   body('tags').optional().isArray().withMessage('Tags must be an array'),
   body('featured').optional().isBoolean().withMessage('Featured must be boolean')
 ];

@@ -1,6 +1,6 @@
 import { Coordinator } from '../models/Coordinator.js';
 import User from '../models/User.js';
-import { sendEmail } from '../services/emailService.js';
+import { sendCustomEmail } from '../services/emailService.js';
 import { pool } from '../config/database.js';
 import { getCoordinatorApprovalTemplate, getRejectionTemplate } from '../utils/emailTemplates.js';
 
@@ -97,7 +97,7 @@ export const createCoordinator = async (req, res) => {
         hasHtml: !!emailData.html
       });
       
-      await sendEmail(emailData.to, emailData.subject, emailData.html);
+      await sendCustomEmail(emailData.to, emailData.subject, emailData.html);
       console.log(`✅ Email successfully sent to coordinator: ${email}`);
     } catch (emailError) {
       console.error('❌ Error sending email to coordinator:', emailError);
@@ -302,7 +302,7 @@ export const approveUser = async (req, res) => {
     // Send approval email
     try {
       const { subject, html } = getCoordinatorApprovalTemplate(updatedUser.first_name, updatedUser.last_name);
-      await sendEmail(updatedUser.email, subject, html);
+      await sendCustomEmail(updatedUser.email, subject, html);
       console.log(`📧 Approval email sent to: ${updatedUser.email}`);
     } catch (emailError) {
       console.error('❌ Failed to send approval email:', emailError);
@@ -351,7 +351,7 @@ export const rejectUser = async (req, res) => {
     // Send rejection email
     try {
       const { subject, html } = getRejectionTemplate(user.first_name, user.last_name);
-      await sendEmail(user.email, subject, html);
+      await sendCustomEmail(user.email, subject, html);
       console.log(`📧 Rejection email sent to: ${user.email}`);
     } catch (emailError) {
       console.error('❌ Failed to send rejection email:', emailError);

@@ -1,4 +1,5 @@
 import { pool } from '../config/database.js';
+import { getSocketIO } from '../config/socket.js';
 
 // @desc    Get alumni list for admin/coordinator messaging
 // @route   GET /api/messages/alumni-list
@@ -424,6 +425,29 @@ export const getMessages = async (req, res) => {
       `;
       
       await pool.query(markAsReadQuery, [senderId, receiverId]);
+      
+      // Send updated count to current user (senderId)
+      const unreadCountQuery = `
+        SELECT COUNT(*) as unread_count 
+        FROM messages 
+        WHERE receiver_id = $1 AND sender_id = $2 AND is_read = false
+      `;
+      const unreadCountResult = await pool.query(unreadCountQuery, [senderId, receiverId]);
+      const unreadCount = parseInt(unreadCountResult.rows[0].unread_count);
+      
+      // Emit count update via socket
+      try {
+        const io = getSocketIO();
+        
+        io.to(senderId).emit('message-count-update', {
+          senderId: receiverId,
+          unreadCount: unreadCount
+        });
+        
+        console.log(`📊 Message count update sent to ${senderId}: ${unreadCount} unread messages from ${receiverId}`);
+      } catch (socketError) {
+        console.log('Socket.IO not available for count update');
+      }
     }
 
     res.status(200).json({
@@ -545,14 +569,21 @@ export const sendMessage = async (req, res) => {
       receiver_id: newMessage.receiver_id,
       message: newMessage.message,
       created_at: newMessage.created_at,
-      sender_name: `${namesResult.rows[0].sender_first_name} ${namesResult.rows[0].sender_last_name}`,
-      receiver_name: `${namesResult.rows[0].receiver_first_name} ${namesResult.rows[0].receiver_last_name}`
+      sender_name: namesResult.rows.length > 0 
+        ? `${namesResult.rows[0].sender_first_name || ''} ${namesResult.rows[0].sender_last_name || ''}`.trim() || 'Unknown User'
+        : 'Unknown User',
+      receiver_name: namesResult.rows.length > 0
+        ? `${namesResult.rows[0].receiver_first_name || ''} ${namesResult.rows[0].receiver_last_name || ''}`.trim() || 'Unknown User'
+        : 'Unknown User'
     };
 
     // Emit real-time message via Socket.IO (if available)
     try {
-      const { getSocketIO } = await import('../config/socket.js');
       const io = getSocketIO();
+      
+      if (!io) {
+        throw new Error('Socket.IO instance not available');
+      }
       
       // Send to receiver's room
       io.to(receiver_id).emit('new-message', {
@@ -563,9 +594,25 @@ export const sendMessage = async (req, res) => {
         timestamp: newMessage.created_at
       });
       
+      // Send message count update to receiver
+      const unreadCountQuery = `
+        SELECT COUNT(*) as unread_count 
+        FROM messages 
+        WHERE receiver_id = $1 AND sender_id = $2 AND is_read = false
+      `;
+      const unreadCountResult = await pool.query(unreadCountQuery, [receiver_id, sender_id]);
+      const unreadCount = parseInt(unreadCountResult.rows[0].unread_count);
+      
+      io.to(receiver_id).emit('message-count-update', {
+        senderId: sender_id,
+        unreadCount: unreadCount
+      });
+      
       console.log(`📢 Real-time message sent from ${sender_id} to ${receiver_id}`);
+      console.log(`📊 Message count update sent to ${receiver_id}: ${unreadCount} unread messages`);
     } catch (socketError) {
-      console.log('Socket.IO not available, skipping real-time emit');
+      console.error('❌ Socket.IO error:', socketError.message);
+      console.log('⚠️ Real-time emit skipped, but message saved to database');
     }
 
     res.status(201).json({

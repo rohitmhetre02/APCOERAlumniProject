@@ -14,6 +14,9 @@ import {
   MicrophoneIcon,
   PhotoIcon
 } from '@heroicons/react/24/outline';
+
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
 import Card from '../../../components/ui/Card';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
@@ -34,7 +37,7 @@ const uploadImageToCloudinary = async (file) => {
     const base64Data = await base64Promise;
     
     // Get auth token
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+    const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
     
     // Upload via backend
     const response = await fetch(`${import.meta.env.VITE_API_URL}/events/upload-image`, {
@@ -115,7 +118,7 @@ const Events = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const adminToken = localStorage.getItem('admin_token');
+      const adminToken = localStorage.getItem(TOKEN_KEY);
       const coordinatorToken = localStorage.getItem('coordinator_token');
       const userRole = localStorage.getItem('userRole');
       
@@ -177,7 +180,7 @@ const Events = () => {
   const fetchEventRegistrations = async (eventId) => {
     try {
       setRegistrationsLoading(true);
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       
       const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${eventId}/registrations`, {
         headers: {
@@ -369,7 +372,7 @@ const Events = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       
       // Filter out empty guest speakers
       const validGuestSpeakers = formData.guest_speakers.filter(
@@ -476,7 +479,7 @@ const Events = () => {
     if (!confirm('Are you sure you want to delete this event?')) return;
 
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       
       const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${eventId}`, {
         method: 'DELETE',

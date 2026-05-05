@@ -1,6 +1,6 @@
 import { validationResult } from 'express-validator';
 import User from '../models/User.js';
-import { sendEmail } from '../services/emailService.js';
+import { sendCustomEmail } from '../services/emailService.js';
 import { getAlumniCredentialsTemplate } from '../utils/emailTemplates.js';
 import { pool } from '../config/database.js';
 import csv from 'csv-parser';
@@ -142,7 +142,7 @@ class AlumniController {
       // Send email with credentials
       try {
         const { subject, html } = getAlumniCredentialsTemplate(firstName, lastName, email, temporaryPassword);
-        await sendEmail(email, subject, html);
+        await sendCustomEmail(email, subject, html);
         
         console.log('✅ Email sent to alumni:', email);
       } catch (emailError) {
@@ -264,7 +264,7 @@ class AlumniController {
             // Send email with delay to prevent server overload
             setTimeout(async () => {
               try {
-                await sendEmail(email, subject, html);
+                await sendCustomEmail(email, subject, html);
                 console.log(`✅ Email sent to ${email} with ${(index * 2)} second delay`);
               } catch (emailError) {
                 console.error(`❌ Error sending delayed email to ${email}:`, emailError);
@@ -272,7 +272,7 @@ class AlumniController {
             }, index * 2000); // 2-second delay for each email (index * 2000ms)
           } else {
             // Send email immediately (original behavior)
-            sendEmail(email, subject, html).catch(emailError => {
+            sendCustomEmail(email, subject, html).catch(emailError => {
               console.error(`❌ Error sending email to ${email}:`, emailError);
             });
           }

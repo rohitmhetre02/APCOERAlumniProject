@@ -16,6 +16,7 @@ import eventRegistrationRoutes from './routes/eventRegistrationRoutes.js';
 import galleryRoutes from './routes/galleryRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import emailRoutes from './routes/emailRoutes.js';
 
 dotenv.config();
 
@@ -80,6 +81,7 @@ app.use('/api/event-registrations', eventRegistrationRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/email', emailRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

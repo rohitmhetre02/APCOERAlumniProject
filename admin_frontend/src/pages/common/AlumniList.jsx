@@ -21,6 +21,9 @@ import {
   ChatBubbleLeftRightIcon,
   EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
+
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -84,7 +87,7 @@ const AlumniList = () => {
   const fetchAlumni = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       
       // Try to get alumni with is_approved field - use different endpoints based on role
       let apiUrl;
@@ -238,7 +241,7 @@ const AlumniList = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/alumni/${editAlumni.id}`, {
         method: 'PUT',
         headers: {
@@ -280,7 +283,7 @@ const AlumniList = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       let url, method, successMessage;
 
       switch (actionType) {
@@ -338,7 +341,7 @@ const AlumniList = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/alumni/add`, {
         method: 'POST',
         headers: {
@@ -388,7 +391,7 @@ const AlumniList = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       const formData = new FormData();
       formData.append('file', bulkFile);
 

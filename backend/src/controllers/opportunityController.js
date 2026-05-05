@@ -1,5 +1,7 @@
 import Opportunity from '../models/Opportunity.js';
 import { createContentApprovalNotification, createCoordinatorPostNotification } from './notificationController.js';
+import { sendCustomEmail } from '../services/emailService.js';
+import { pool } from '../config/database.js';
 
 // Get opportunity by ID
 export const getOpportunityById = async (req, res) => {
@@ -106,7 +108,7 @@ export const approveOpportunity = async (req, res) => {
       console.log(`📧 HTML length: ${emailTemplate.html.length}`);
       
       console.log(`📧 About to send email...`);
-      const emailResult = await sendEmail(opportunity.author_email, emailTemplate.subject, emailTemplate.html);
+      const emailResult = await sendCustomEmail(opportunity.author_email, emailTemplate.subject, emailTemplate.html);
       console.log(`✅ Approval email sent to opportunity creator: ${opportunity.author_email}`);
       console.log(`📧 Email result:`, emailResult);
     } catch (emailError) {
@@ -141,9 +143,22 @@ export const approveOpportunity = async (req, res) => {
         const alumniEmails = alumniResult.rows.map(alumni => alumni.email);
         console.log(`📧 About to send bulk emails to ${alumniEmails.length} alumni...`);
         
-        const bulkResult = await sendBulkEmail(alumniEmails, emailTemplate.subject, emailTemplate.html);
-        console.log(`✅ Bulk notification email completed: ${bulkResult.totalSent}/${bulkResult.totalSent + bulkResult.totalFailed} sent successfully`);
-        console.log(`📧 Bulk result details:`, bulkResult);
+        // Send individual emails to each alumni
+        let sentCount = 0;
+        let failedCount = 0;
+        
+        for (const email of alumniEmails) {
+          try {
+            await sendCustomEmail(email, emailTemplate.subject, emailTemplate.html);
+            sentCount++;
+          } catch (error) {
+            console.error(`❌ Failed to send to ${email}:`, error.message);
+            failedCount++;
+          }
+        }
+        
+        console.log(`✅ Bulk notification email completed: ${sentCount}/${alumniEmails.length} sent successfully`);
+        console.log(`📧 Sent: ${sentCount}, Failed: ${failedCount}`);
       } else {
         console.log(`ℹ️ No approved alumni found to notify`);
       }
@@ -156,10 +171,13 @@ export const approveOpportunity = async (req, res) => {
     try {
       const { createNotification } = await import('./notificationController.js');
       await createNotification({
-        user_id: opportunity.created_by,
+        receiver_id: opportunity.created_by,
+        sender_id: req.user.userId, // Admin who approved
+        role_target: 'alumni', // Target role for the notification
         message: `Your opportunity "${opportunity.title}" has been approved and is now live!`,
-        type: 'opportunity_approved',
-        department: opportunity.department
+        type: 'content_approved',
+        department: opportunity.department,
+        reference_id: opportunity.id
       });
       console.log(`✅ Approval notification sent to opportunity creator for: ${opportunity.title}`);
     } catch (notificationError) {
@@ -215,10 +233,13 @@ export const rejectOpportunity = async (req, res) => {
     try {
       const { createNotification } = await import('./notificationController.js');
       await createNotification({
-        user_id: opportunity.created_by,
+        receiver_id: opportunity.created_by,
+        sender_id: req.user.userId, // Admin who rejected
+        role_target: 'alumni', // Target role for the notification
         message: `Your opportunity "${opportunity.title}" has been reviewed and requires changes.`,
-        type: 'opportunity_rejected',
-        department: opportunity.department
+        type: 'content_rejected',
+        department: opportunity.department,
+        reference_id: opportunity.id
       });
       console.log(`📢 Rejection notification sent to opportunity creator for: ${opportunity.title}`);
     } catch (notificationError) {
@@ -298,9 +319,56 @@ export const createOpportunity = async (req, res) => {
     // If admin created opportunity, send email to all alumni
     if (req.user.role === 'admin') {
       try {
-        const { sendAdminOpportunityNotificationEmails } = await import('./emailController.js');
-        await sendAdminOpportunityNotificationEmails(opportunity);
-        console.log(`📧 Opportunity notification emails sent to alumni for: ${opportunity.title}`);
+        console.log(`📧 Admin created opportunity, sending notifications to all alumni...`);
+        
+        // Get all active alumni
+        const alumniQuery = `
+          SELECT email, first_name, last_name 
+          FROM users 
+          WHERE role = 'alumni' 
+          AND is_approved = true 
+          AND status = 'active'
+        `;
+        const alumniResult = await pool.query(alumniQuery);
+        
+        if (alumniResult.rows.length > 0) {
+          console.log(`👥 Found ${alumniResult.rows.length} active alumni to notify`);
+          
+          // Create email template for alumni
+          const { getAlumniOpportunityNotificationTemplate } = await import('../utils/emailTemplates.js');
+          
+          // Debug: Log opportunity data
+          console.log('🔍 Opportunity data for email:', {
+            title: opportunity.title,
+            company: opportunity.company,
+            employment_type: opportunity.employment_type,
+            job_type: opportunity.job_type,
+            experience_level: opportunity.experience_level,
+            experience: opportunity.experience,
+            application_deadline: opportunity.application_deadline,
+            location: opportunity.location
+          });
+          
+          const emailTemplate = getAlumniOpportunityNotificationTemplate(opportunity);
+          
+          // Send individual emails to each alumni
+          let sentCount = 0;
+          let failedCount = 0;
+          
+          for (const alumni of alumniResult.rows) {
+            try {
+              await sendCustomEmail(alumni.email, emailTemplate.subject, emailTemplate.html);
+              sentCount++;
+            } catch (error) {
+              console.error(`❌ Failed to send to ${alumni.email}:`, error.message);
+              failedCount++;
+            }
+          }
+          
+          console.log(`✅ Opportunity notification emails completed: ${sentCount}/${alumniResult.rows.length} sent successfully`);
+        } else {
+          console.log(`ℹ️ No active alumni found to notify`);
+        }
       } catch (emailError) {
         console.error('❌ Failed to send opportunity notification emails:', emailError.message);
       }

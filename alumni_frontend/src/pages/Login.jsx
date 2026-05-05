@@ -15,6 +15,15 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Forgot password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: otp, 3: new password
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   // Setup global notification functions for authService
   useEffect(() => {
@@ -118,6 +127,118 @@ const Login = () => {
     }
   };
 
+  // Forgot password functions
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showSuccess('OTP sent to your email address');
+        setForgotStep(2);
+      } else {
+        showError(data.message || 'Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      showError('Error sending OTP. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail, otp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showSuccess('OTP verified successfully');
+        setForgotStep(3);
+      } else {
+        showError(data.message || 'Invalid OTP');
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      showError('Error verifying OTP. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      showError('Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: forgotEmail, 
+          otp,
+          newPassword 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showSuccess('Password reset successfully! Please login with your new password.');
+        handleBackToLogin();
+      } else {
+        showError(data.message || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      showError('Error resetting password. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false);
+    setForgotStep(1);
+    setForgotEmail('');
+    setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -208,6 +329,16 @@ const Login = () => {
               </span>
             </div>
             
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-blue-600 hover:text-blue-500 transition duration-150 ease-in-out"
+              >
+                Forgot your password?
+              </button>
+            </div>
+            
             <div className="text-center mt-4">
               <span className="text-sm text-gray-600">Administrator? </span>
               <a 
@@ -221,6 +352,123 @@ const Login = () => {
             </div>
           </div>
         </form>
+
+        {/* Forgot Password Modal */}
+        {showForgotPassword && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-2xl bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Forgot Password
+                  </h3>
+                  <button
+                    onClick={handleBackToLogin}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Step 1: Enter Email */}
+                {forgotStep === 1 && (
+                  <form onSubmit={handleSendOTP} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Enter your email address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="alumni@example.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Sending...' : 'Send OTP'}
+                    </button>
+                  </form>
+                )}
+
+                {/* Step 2: Enter OTP */}
+                {forgotStep === 2 && (
+                  <form onSubmit={handleVerifyOTP} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Enter OTP sent to your email
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="123456"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </form>
+                )}
+
+                {/* Step 3: Enter New Password */}
+                {forgotStep === 3 && (
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

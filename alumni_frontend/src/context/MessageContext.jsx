@@ -45,6 +45,15 @@ export const MessageProvider = ({ children }) => {
         }
       });
 
+      socket.on('message-count-update', (data) => {
+        // Update unread count based on server count
+        setUnreadCounts(prev => ({
+          ...prev,
+          [data.senderId]: data.unreadCount
+        }));
+        console.log(`📊 Updated unread count for ${data.senderId}: ${data.unreadCount}`);
+      });
+
       return () => {
         disconnectSocket();
       };

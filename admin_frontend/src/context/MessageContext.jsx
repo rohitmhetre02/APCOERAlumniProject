@@ -54,6 +54,20 @@ export const MessageProvider = ({ children }) => {
         }
       });
 
+      socket.on('message-count-update', (data) => {
+        // Update unread count based on server count
+        setUnreadCounts(prev => {
+          const newCounts = {
+            ...prev,
+            [data.senderId]: data.unreadCount
+          };
+          // Save to localStorage for persistence
+          localStorage.setItem('admin_unread_counts', JSON.stringify(newCounts));
+          return newCounts;
+        });
+        console.log(`📊 Admin updated unread count for ${data.senderId}: ${data.unreadCount}`);
+      });
+
       return () => {
         disconnectSocket();
       };

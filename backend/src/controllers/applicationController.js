@@ -3,6 +3,7 @@ import Opportunity from '../models/Opportunity.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { sendCustomEmail } from '../services/emailService.js';
 
 // Configure multer for resume uploads
 const storage = multer.diskStorage({
@@ -254,6 +255,178 @@ class ApplicationController {
           success: false,
           message: 'Application not found'
         });
+      }
+
+      // Send email notification based on status change
+      try {
+        // Get application details with user and opportunity info
+        const applicationDetails = await Application.findById(id);
+        
+        if (applicationDetails && applicationDetails.user_id && applicationDetails.opportunity_id) {
+          // Get user details
+          const userQuery = `
+            SELECT first_name, last_name, email 
+            FROM users 
+            WHERE id = $1
+          `;
+          const userResult = await Application.pool.query(userQuery, [applicationDetails.user_id]);
+          
+          // Get opportunity details
+          const opportunityQuery = `
+            SELECT title, company 
+            FROM opportunities 
+            WHERE id = $1
+          `;
+          const opportunityResult = await Application.pool.query(opportunityQuery, [applicationDetails.opportunity_id]);
+          
+          if (userResult.rows.length > 0 && opportunityResult.rows.length > 0) {
+            const userName = `${userResult.rows[0].first_name} ${userResult.rows[0].last_name}`;
+            const userEmail = userResult.rows[0].email;
+            const opportunityTitle = opportunityResult.rows[0].title;
+            const company = opportunityResult.rows[0].company;
+
+            if (status === 'under_review') {
+              const subject = `📋 Your Application is Under Review - ${opportunityTitle}`;
+              const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Application Under Review</title>
+                  <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .header { background: #f39c12; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; }
+                    .status-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    .footer { background: #ecf0f1; padding: 20px; text-align: center; font-size: 12px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="header">
+                    <h1>📋 Application Update</h1>
+                    <p>APCOER Alumni Portal</p>
+                  </div>
+                  <div class="content">
+                    <h2>Dear ${userName},</h2>
+                    <p>Your application for the position of <strong>${opportunityTitle}</strong> at <strong>${company}</strong> is currently under review.</p>
+                    
+                    <div class="status-box">
+                      <h3>📋 Application Status: Under Review</h3>
+                      <p>Our team is carefully reviewing your application. We will notify you once a decision has been made.</p>
+                    </div>
+                    
+                    <p>Thank you for your interest in this opportunity. We appreciate your patience during the review process.</p>
+                    
+                    <p>Best regards,<br>APCOER Alumni Team</p>
+                  </div>
+                  <div class="footer">
+                    <p>&copy; 2025 APCOER Alumni Portal. All rights reserved.</p>
+                  </div>
+                </body>
+                </html>
+              `;
+              
+              await sendCustomEmail(userEmail, subject, html);
+              console.log(`📧 Review email sent to: ${userEmail}`);
+              
+            } else if (status === 'accepted') {
+              const subject = `🎉 Congratulations! Your Application Has Been Accepted - ${opportunityTitle}`;
+              const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Application Accepted</title>
+                  <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .header { background: #27ae60; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; }
+                    .status-box { background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    .footer { background: #ecf0f1; padding: 20px; text-align: center; font-size: 12px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="header">
+                    <h1>🎉 Congratulations!</h1>
+                    <p>APCOER Alumni Portal</p>
+                  </div>
+                  <div class="content">
+                    <h2>Dear ${userName},</h2>
+                    <p>We are delighted to inform you that your application for the position of <strong>${opportunityTitle}</strong> at <strong>${company}</strong> has been <strong>accepted</strong>!</p>
+                    
+                    <div class="status-box">
+                      <h3>🎉 Application Status: Accepted</h3>
+                      <p>Congratulations! The hiring team has selected your application for the next steps. They will contact you soon with further details about the interview process.</p>
+                    </div>
+                    
+                    <p>This is a great achievement! We wish you the best of luck in the next stages of the recruitment process.</p>
+                    
+                    <p>Best regards,<br>APCOER Alumni Team</p>
+                  </div>
+                  <div class="footer">
+                    <p>&copy; 2025 APCOER Alumni Portal. All rights reserved.</p>
+                  </div>
+                </body>
+                </html>
+              `;
+              
+              await sendCustomEmail(userEmail, subject, html);
+              console.log(`📧 Acceptance email sent to: ${userEmail}`);
+              
+            } else if (status === 'rejected') {
+              const subject = `📄 Update on Your Application - ${opportunityTitle}`;
+              const html = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Application Update</title>
+                  <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .header { background: #e74c3c; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; }
+                    .status-box { background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                    .footer { background: #ecf0f1; padding: 20px; text-align: center; font-size: 12px; }
+                  </style>
+                </head>
+                <body>
+                  <div class="header">
+                    <h1>📄 Application Update</h1>
+                    <p>APCOER Alumni Portal</p>
+                  </div>
+                  <div class="content">
+                    <h2>Dear ${userName},</h2>
+                    <p>Thank you for your interest in the position of <strong>${opportunityTitle}</strong> at <strong>${company}</strong>.</p>
+                    
+                    <div class="status-box">
+                      <h3>📄 Application Status: Not Selected</h3>
+                      <p>After careful consideration, we regret to inform you that your application was not selected for this position at this time.</p>
+                    </div>
+                    
+                    <p>Please don't be discouraged. The job market is competitive, and we encourage you to continue applying for other opportunities that match your skills and experience.</p>
+                    
+                    <p>We wish you the very best in your job search and future career endeavors.</p>
+                    
+                    <p>Best regards,<br>APCOER Alumni Team</p>
+                  </div>
+                  <div class="footer">
+                    <p>&copy; 2025 APCOER Alumni Portal. All rights reserved.</p>
+                  </div>
+                </body>
+                </html>
+              `;
+              
+              await sendCustomEmail(userEmail, subject, html);
+              console.log(`📧 Rejection email sent to: ${userEmail}`);
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending email notification:', emailError);
+        // Don't fail the request if email fails
       }
 
       res.json({

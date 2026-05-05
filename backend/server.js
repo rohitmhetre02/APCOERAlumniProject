@@ -3,7 +3,6 @@ import { createServer } from 'http';
 import app from './src/app.js';
 import { connectDB } from './src/config/database.js';
 import { initializeAllTables } from './src/models/index.js';
-import { testEmailConfig } from './src/services/emailService.js';
 import { ensureAdminExists } from './src/middleware/adminMiddleware.js';
 import { ensureCoordinatorExists } from './src/middleware/coordinatorMiddleware.js';
 import { initializeSocket } from './src/config/socket.js';
@@ -21,6 +20,23 @@ const PORT = process.env.PORT || 5000;
 
 // Create HTTP server for Socket.IO
 const server = createServer(app);
+
+// Global error handlers for Redis/BullMQ issues
+process.on('uncaughtException', (error) => {
+  if (error.message.includes('Command timed out') || error.message.includes('ECONNRESET')) {
+    console.warn('⚠️ Redis connection issue handled gracefully:', error.message);
+    return; // Don't crash the server
+  }
+  console.error('💥 Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  if (reason instanceof Error && (reason.message.includes('Command timed out') || reason.message.includes('ECONNRESET'))) {
+    console.warn('⚠️ Redis connection issue handled gracefully:', reason.message);
+    return; // Don't crash the server
+  }
+  console.error('💥 Unhandled Rejection:', reason);
+});
 
 // Initialize database and start server
 const startServer = async () => {
@@ -41,8 +57,16 @@ const startServer = async () => {
     const io = initializeSocket(server);
     app.set('io', io);
     
-    // Test email configuration
-    await testEmailConfig();
+    // Initialize Email Queue for main server
+    try {
+      console.log('📧 Initializing email queue...');
+      const { initializeEmailQueue } = await import('./src/services/emailQueueService.js');
+      await initializeEmailQueue();
+      console.log('✅ Email queue initialized successfully');
+    } catch (emailError) {
+      console.warn('⚠️ Email queue initialization failed (email worker will handle):', emailError.message);
+      console.log('📧 Email functionality will be available when email worker is started');
+    }
     
     // Ensure admin and coordinator users exist
     await ensureAdminExists();

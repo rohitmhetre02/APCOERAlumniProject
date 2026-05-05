@@ -1,257 +1,390 @@
-import { pool } from '../config/database.js';
-import { sendEmail } from '../services/emailService.js';
-import { getEventNotificationTemplate, getEventRejectionTemplate } from '../utils/emailTemplates.js';
+// Email Controller - Production Ready API Endpoints
+import emailService from '../services/emailService.js';
+import { isValidEmail, isValidTemplate } from '../utils/emailValidator.js';
+import { getQueueStats, pauseQueue, resumeQueue, clearQueue } from '../services/emailQueueService.js';
 
-// @desc    Send event notification emails to all alumni
-// @access  Internal
-export const sendEventNotificationEmails = async (event) => {
+// Send single email
+export const sendSingleEmail = async (req, res) => {
   try {
-    console.log(`📧 Sending event notification emails for: ${event.title}`);
-    
-    // Get all approved alumni
-    const alumniQuery = `
-      SELECT email, first_name, last_name 
-      FROM users 
-      WHERE role = 'alumni' AND status = 'active'
-    `;
-    
-    const alumniResult = await pool.query(alumniQuery);
-    const alumni = alumniResult.rows;
-    
-    console.log(`👥 Found ${alumni.length} alumni to send event notifications`);
-    
-    // Format guest speakers for email
-    const guestSpeakersText = event.guest_speakers && event.guest_speakers.length > 0
-      ? event.guest_speakers.map(speaker => `${speaker.name} (${speaker.role}) - ${speaker.topic}`).join(', ')
-      : 'No guest speakers';
-    
-    // Send emails with 2-second delay between each
-    for (let i = 0; i < alumni.length; i++) {
-      const alum = alumni[i];
-      
-      const emailContent = getEventNotificationTemplate({
-        recipientName: alum.first_name,
-        eventTitle: event.title,
-        eventDescription: event.description ? event.description.substring(0, 200) + '...' : '',
-        eventDate: event.event_date,
-        eventTime: event.event_time,
-        eventMode: event.event_mode,
-        location: event.location,
-        guestSpeakers: guestSpeakersText
+    const { to, subject, htmlContent, options = {} } = req.body;
+
+    // Validation
+    if (!to || !subject || !htmlContent) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: to, subject, htmlContent'
       });
-      
-      try {
-        await sendEmail(alum.email, `🎉 New Event: ${event.title}`, emailContent.html);
-        
-        console.log(`✅ Event notification sent to: ${alum.email} (${i + 1}/${alumni.length})`);
-        
-        // 2-second delay between emails
-        if (i < alumni.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        
-      } catch (emailError) {
-        console.error(`❌ Failed to send event notification to ${alum.email}:`, emailError.message);
-      }
     }
-    
-    console.log(`📧 Event notification emails completed for: ${event.title}`);
-    
-  } catch (error) {
-    console.error('❌ Error sending event notification emails:', error.message);
-    throw error;
-  }
-};
 
-// @desc    Send event rejection email to event creator
-// @access  Internal
-export const sendEventRejectionEmail = async (event, rejectionReason) => {
-  try {
-    console.log(`📧 Sending event rejection email to: ${event.created_by_email}`);
-    
-    const emailContent = getEventRejectionTemplate({
-      recipientName: event.created_by_name,
-      eventTitle: event.title,
-      rejectionReason: rejectionReason || 'Event does not meet our requirements'
+    if (!isValidEmail(to)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email address'
+      });
+    }
+
+    // Send email via queue
+    const result = await emailService.sendCustomEmail(to, subject, htmlContent, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Email queued successfully',
+      data: result
     });
-    
-    await sendEmail(event.created_by_email, `Event Rejected: ${event.title}`, emailContent.html);
-    
-    console.log(`✅ Event rejection email sent to: ${event.created_by_email}`);
-    
-  } catch (error) {
-    console.error('❌ Error sending event rejection email:', error.message);
-    throw error;
-  }
-};
 
-// Send admin event notification emails to all alumni and coordinators
-export const sendAdminEventNotificationEmails = async (event) => {
-  try {
-    console.log(`📧 Starting admin event notification emails for: ${event.title}`);
-    console.log(`📧 Event data:`, { title: event.title, description: event.description?.substring(0, 100), event_date: event.event_date });
-    
-    // Get all active alumni and coordinators
-    const notificationQuery = `
-      SELECT email, first_name, last_name, role 
-      FROM users 
-      WHERE (role = 'alumni' OR role = 'coordinator') AND status = 'active'
-    `;
-    
-    console.log(`📧 Executing query: ${notificationQuery}`);
-    const notificationResult = await pool.query(notificationQuery);
-    const recipients = notificationResult.rows;
-    
-    const alumniCount = recipients.filter(r => r.role === 'alumni').length;
-    const coordinatorCount = recipients.filter(r => r.role === 'coordinator').length;
-    
-    console.log(`👥 Found ${recipients.length} recipients (${alumniCount} alumni, ${coordinatorCount} coordinators) to send event notifications`);
-    console.log(`📧 Recipients list:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.email}) - ${r.role}`));
-    
-    if (recipients.length === 0) {
-      console.log('ℹ️ No active alumni or coordinators found to notify');
-      return;
-    }
-    
-    console.log(`📧 Starting to send ${recipients.length} emails with 2-second delays...`);
-    
-    // Send emails with 2-second delay between each
-    for (let i = 0; i < recipients.length; i++) {
-      const recipient = recipients[i];
-      
-      console.log(`📧 Processing recipient ${i + 1}/${recipients.length}: ${recipient.email} (${recipient.role})`);
-      
-      try {
-        console.log(`📧 Creating email template for ${recipient.first_name}...`);
-        const { getAdminEventNotificationTemplate } = await import('../utils/emailTemplates.js');
-        
-        const emailContent = getAdminEventNotificationTemplate({
-          recipientName: recipient.first_name,
-          eventTitle: event.title,
-          eventDescription: event.description,
-          eventDate: event.event_date,
-          eventTime: event.event_time,
-          eventMode: event.event_mode,
-          location: event.location,
-          guestSpeakers: event.guest_speakers || []
-        });
-        
-        console.log(`📧 Email template created. Subject: 🎉 New Event: ${event.title}`);
-        console.log(`📧 Template type: ${typeof emailContent}`);
-        console.log(`📧 Template has html property: ${!!emailContent.html}`);
-        console.log(`📧 HTML length: ${emailContent.html ? emailContent.html.length : 'undefined'}`);
-        console.log(`📧 About to send email to ${recipient.email}...`);
-        
-        await sendEmail(recipient.email, `🎉 New Event: ${event.title}`, emailContent.html);
-        
-        console.log(`✅ Event notification sent successfully to: ${recipient.email} (${recipient.role}) (${i + 1}/${recipients.length})`);
-        
-        // 2-second delay between emails
-        if (i < recipients.length - 1) {
-          console.log(`⏳ Waiting 2 seconds before next email...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          console.log(`⏰ Resuming email sending...`);
-        }
-        
-      } catch (emailError) {
-        console.error(`❌ Failed to send event notification to ${recipient.email}:`, emailError.message);
-        console.error(`❌ Full error details:`, emailError);
-      }
-    }
-    
-    console.log(`📧 Admin event notification emails completed successfully for: ${event.title}`);
-    
   } catch (error) {
-    console.error('❌ Error sending admin event notification emails:', error.message);
-    console.error('❌ Full error details:', error);
-    throw error;
-  }
-};
-
-// Send admin opportunity notification emails to all alumni
-export const sendAdminOpportunityNotificationEmails = async (opportunity) => {
-  try {
-    console.log(`📧 Starting admin opportunity notification emails for: ${opportunity.title}`);
-    console.log(`📧 Opportunity data:`, { 
-      title: opportunity.title, 
-      company: opportunity.company, 
-      type: opportunity.type,
-      location: opportunity.location,
-      deadline: opportunity.deadline 
+    console.error('❌ Send single email failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send email',
+      error: error.message
     });
-    
-    // Get all active alumni only (not coordinators for opportunities)
-    const notificationQuery = `
-      SELECT email, first_name, last_name, role 
-      FROM users 
-      WHERE role = 'alumni' AND status = 'active'
-    `;
-    
-    console.log(`📧 Executing query: ${notificationQuery}`);
-    const notificationResult = await pool.query(notificationQuery);
-    const recipients = notificationResult.rows;
-    
-    console.log(`👥 Found ${recipients.length} alumni recipients to send opportunity notifications`);
-    console.log(`📧 Recipients list:`, recipients.map(r => `${r.first_name} ${r.last_name} (${r.email}) - ${r.role}`));
-    
-    if (recipients.length === 0) {
-      console.log('ℹ️ No active alumni found to notify about opportunity');
-      return;
-    }
-    
-    console.log(`📧 Starting to send ${recipients.length} opportunity emails with 2-second delays...`);
-    
-    // Send emails with 2-second delay between each
-    for (let i = 0; i < recipients.length; i++) {
-      const recipient = recipients[i];
-      
-      console.log(`📧 Processing recipient ${i + 1}/${recipients.length}: ${recipient.email} (${recipient.role})`);
-      
-      try {
-        console.log(`📧 Creating opportunity email template for ${recipient.first_name}...`);
-        const { getAdminOpportunityNotificationTemplate } = await import('../utils/emailTemplates.js');
-        
-        const emailContent = getAdminOpportunityNotificationTemplate({
-          recipientName: recipient.first_name,
-          title: opportunity.title,
-          company: opportunity.company,
-          type: opportunity.type,
-          location: opportunity.location,
-          salary_range: opportunity.salary_range,
-          experience_range: opportunity.experience_range,
-          deadline: opportunity.deadline,
-          description: opportunity.description,
-          skills: opportunity.skills || []
-        });
-        
-        console.log(`📧 Email template created. Subject: 💼 New Opportunity: ${opportunity.title}`);
-        console.log(`📧 Template type: ${typeof emailContent}`);
-        console.log(`📧 Template has html property: ${!!emailContent.html}`);
-        console.log(`📧 HTML length: ${emailContent.html ? emailContent.html.length : 'undefined'}`);
-        console.log(`📧 About to send opportunity email to ${recipient.email}...`);
-        
-        await sendEmail(recipient.email, `💼 New Opportunity: ${opportunity.title}`, emailContent.html);
-        
-        console.log(`✅ Opportunity notification sent successfully to: ${recipient.email} (${recipient.role}) (${i + 1}/${recipients.length})`);
-        
-        // 2-second delay between emails
-        if (i < recipients.length - 1) {
-          console.log(`⏳ Waiting 2 seconds before next opportunity email...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          console.log(`⏰ Resuming opportunity email sending...`);
-        }
-        
-      } catch (emailError) {
-        console.error(`❌ Failed to send opportunity notification to ${recipient.email}:`, emailError.message);
-        console.error(`❌ Full opportunity email error:`, emailError);
-      }
-    }
-    
-    console.log(`📧 Admin opportunity notification emails completed successfully for: ${opportunity.title}`);
-    
-  } catch (error) {
-    console.error('❌ Error sending admin opportunity notification emails:', error.message);
-    console.error('❌ Full opportunity email error details:', error);
-    throw error;
   }
+};
+
+// Send bulk emails
+export const sendBulkEmails = async (req, res) => {
+  try {
+    const { recipients, subject, htmlContent, options = {} } = req.body;
+
+    // Validation
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recipients array is required and cannot be empty'
+      });
+    }
+
+    if (!subject || !htmlContent) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: subject, htmlContent'
+      });
+    }
+
+    // Validate all email addresses
+    const invalidEmails = recipients.filter(email => !isValidEmail(email));
+    if (invalidEmails.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email addresses found',
+        invalidEmails
+      });
+    }
+
+    // Send bulk emails via queue
+    const result = await emailService.sendBulkEmails(recipients, subject, htmlContent, options);
+
+    res.status(200).json({
+      success: true,
+      message: 'Bulk emails queued successfully',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Send bulk emails failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send bulk emails',
+      error: error.message
+    });
+  }
+};
+
+// Send template-based email
+export const sendTemplateEmail = async (req, res) => {
+  try {
+    const { template, to, data, options = {} } = req.body;
+
+    // Validation
+    if (!template || !to || !data) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: template, to, data'
+      });
+    }
+
+    if (!isValidTemplate(template)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid template type',
+        availableTemplates: [
+          'registration-pending',
+          'account-approved', 
+          'account-rejected',
+          'account-created',
+          'coordinator-account-created',
+          'otp',
+          'content-approved',
+          'content-notification',
+          'news-notification'
+        ]
+      });
+    }
+
+    if (!isValidEmail(to)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email address'
+      });
+    }
+
+    // Send template email
+    let result;
+    switch (template) {
+      case 'registration-pending':
+        result = await emailService.sendRegistrationPendingEmail(to, data.userName);
+        break;
+      
+      case 'account-approved':
+        result = await emailService.sendAccountApprovedEmail(to, data.userName, data.loginUrl);
+        break;
+      
+      case 'account-rejected':
+        result = await emailService.sendAccountRejectedEmail(to, data.userName, data.rejectionReason);
+        break;
+      
+      case 'account-created':
+        result = await emailService.sendAccountCreatedEmail(to, data.userName, data.userEmail, data.temporaryPassword, data.loginUrl);
+        break;
+      
+      case 'coordinator-account-created':
+        result = await emailService.sendCoordinatorAccountCreatedEmail(to, data.userName, data.userEmail, data.temporaryPassword, data.loginUrl);
+        break;
+      
+      case 'otp':
+        result = await emailService.sendOTPEmail(to, data.userName, data.otp, data.purpose);
+        break;
+      
+      case 'content-approved':
+        result = await emailService.sendContentApprovedEmail(to, data.userName, data.contentType, data.contentTitle, data.contentUrl);
+        break;
+      
+      case 'content-notification':
+        result = await emailService.sendContentNotificationEmail(to, data.userName, data.contentType, data.contentData, data.contentUrl);
+        break;
+      
+      case 'news-notification':
+        result = await emailService.sendNewsNotificationEmail(to, data.userName, data.newsData, data.newsUrl);
+        break;
+      
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Template not implemented'
+        });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Template email queued successfully',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Send template email failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send template email',
+      error: error.message
+    });
+  }
+};
+
+// Get queue statistics
+export const getQueueStatistics = async (req, res) => {
+  try {
+    const stats = await getQueueStats();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Queue statistics retrieved successfully',
+      data: stats.data
+    });
+
+  } catch (error) {
+    console.error('❌ Get queue statistics failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get queue statistics',
+      error: error.message
+    });
+  }
+};
+
+// Pause email queue
+export const pauseEmailQueue = async (req, res) => {
+  try {
+    const result = await pauseQueue();
+    
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Pause queue failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to pause queue',
+      error: error.message
+    });
+  }
+};
+
+// Resume email queue
+export const resumeEmailQueue = async (req, res) => {
+  try {
+    const result = await resumeQueue();
+    
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Resume queue failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resume queue',
+      error: error.message
+    });
+  }
+};
+
+// Clear email queue
+export const clearEmailQueue = async (req, res) => {
+  try {
+    const result = await clearQueue();
+    
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Clear queue failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear queue',
+      error: error.message
+    });
+  }
+};
+
+// Email service health check
+export const healthCheck = async (req, res) => {
+  try {
+    const health = await emailService.healthCheck();
+    
+    const statusCode = health.status === 'healthy' ? 200 : 503;
+    
+    res.status(statusCode).json({
+      success: health.status === 'healthy',
+      message: health.status === 'healthy' ? 'Email service is healthy' : 'Email service is unhealthy',
+      data: health
+    });
+
+  } catch (error) {
+    console.error('❌ Health check failed:', error.message);
+    res.status(503).json({
+      success: false,
+      message: 'Health check failed',
+      error: error.message
+    });
+  }
+};
+
+// Get email service status
+export const getServiceStatus = async (req, res) => {
+  try {
+    const status = emailService.getStatus();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Service status retrieved successfully',
+      data: status
+    });
+
+  } catch (error) {
+    console.error('❌ Get service status failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get service status',
+      error: error.message
+    });
+  }
+};
+
+// Test email endpoint (for development/testing)
+export const testEmail = async (req, res) => {
+  try {
+    const { to } = req.body;
+
+    if (!to) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required for test'
+      });
+    }
+
+    if (!isValidEmail(to)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email address'
+      });
+    }
+
+    // Send test email
+    const result = await emailService.sendCustomEmail(
+      to,
+      'APCOER Alumni Portal - Test Email',
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #1A3A5C;">📧 Test Email</h2>
+          <p>This is a test email from the APCOER Alumni Portal email service.</p>
+          <p><strong>Sent at:</strong> ${new Date().toLocaleString()}</p>
+          <p><strong>Service Status:</strong> ✅ Working</p>
+          <hr style="border: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #666; font-size: 14px;">
+            This is an automated test message. If you received this email, the email service is working correctly.
+          </p>
+        </div>
+      `,
+      {
+        priority: 5,
+        category: 'test'
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Test email queued successfully',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Test email failed:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send test email',
+      error: error.message
+    });
+  }
+};
+
+export default {
+  sendSingleEmail,
+  sendBulkEmails,
+  sendTemplateEmail,
+  getQueueStatistics,
+  pauseEmailQueue,
+  resumeEmailQueue,
+  clearEmailQueue,
+  healthCheck,
+  getServiceStatus,
+  testEmail
 };

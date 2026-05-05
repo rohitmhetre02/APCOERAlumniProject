@@ -425,6 +425,15 @@ const Messages = () => {
       localStorage.setItem('admin_unread_counts', JSON.stringify(newCounts));
       return newCounts;
     });
+
+    // Emit socket event to clear unread count on server and sync across components
+    if (socket) {
+      socket.emit('clear-unread-count', {
+        userId: user.id,
+        contactId: contact.id
+      });
+      console.log(`📊 Admin cleared unread count for contact ${contact.id}`);
+    }
   };
 
   // Add contact to sidebar when message is sent or received

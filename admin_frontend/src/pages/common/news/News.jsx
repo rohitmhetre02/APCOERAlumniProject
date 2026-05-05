@@ -8,6 +8,9 @@ import Badge from "../../../components/ui/Badge";
 import { useAuth } from '../../../context/AuthContext';
 import { Plus, Edit, Trash2, Eye, Image, X, Check, Clock, Search } from 'lucide-react';
 
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
+
 const News = () => {
   const { user } = useAuth();
   const [news, setNews] = useState([]);
@@ -59,7 +62,7 @@ const News = () => {
   const fetchNews = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       
       if (!token) {
         setError('Please login to access news');
@@ -129,7 +132,7 @@ const News = () => {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+              'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
             },
             body: JSON.stringify({
               image: base64data,
@@ -159,7 +162,7 @@ const News = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       
       const newsData = {
         ...formData,
@@ -240,7 +243,7 @@ const News = () => {
     if (!confirm('Are you sure you want to delete this news article?')) return;
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       
       const response = await fetch(`${import.meta.env.VITE_API_URL}/news/${id}`, {
         method: 'DELETE',

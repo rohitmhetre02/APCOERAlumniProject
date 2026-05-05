@@ -1,5 +1,8 @@
 import { io } from 'socket.io-client';
 
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
+
 class SocketService {
   constructor() {
     this.socket = null;
@@ -13,7 +16,7 @@ class SocketService {
       return this.socket;
     }
 
-    const token = localStorage.getItem('coordinator_token') || localStorage.getItem('admin_token');
+    const token = localStorage.getItem('coordinator_token') || localStorage.getItem(TOKEN_KEY);
     if (!token) {
       console.warn('⚠️ No coordinator or admin token found, skipping socket connection');
       return null;

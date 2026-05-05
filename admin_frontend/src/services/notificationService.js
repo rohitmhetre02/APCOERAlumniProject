@@ -1,6 +1,10 @@
 // API service for notifications
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
+const USER_KEY = import.meta.env.VITE_USER_KEY || 'admin_user';
+
 // Handle API responses
 const handleResponse = async (response) => {
   const data = await response.json();
@@ -17,7 +21,7 @@ export const getNotifications = async (limit = 50, offset = 0) => {
   try {
     // Check for both coordinator_token (first login) and admin_token (after first login)
     const coordinatorToken = localStorage.getItem('coordinator_token');
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = localStorage.getItem(TOKEN_KEY);
     const userRole = localStorage.getItem('userRole');
     
     const token = coordinatorToken || adminToken;
@@ -56,7 +60,7 @@ export const getUnreadCount = async () => {
   try {
     // Check for both coordinator_token (first login) and admin_token (after first login)
     const coordinatorToken = localStorage.getItem('coordinator_token');
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = localStorage.getItem(TOKEN_KEY);
     const userRole = localStorage.getItem('userRole');
     
     const token = coordinatorToken || adminToken;
@@ -95,7 +99,7 @@ export const markNotificationAsRead = async (notificationId) => {
   try {
     // Check for both coordinator_token (first login) and admin_token (after first login)
     const coordinatorToken = localStorage.getItem('coordinator_token');
-    const adminToken = localStorage.getItem('admin_token');
+    const adminToken = localStorage.getItem(TOKEN_KEY);
     const userRole = localStorage.getItem('userRole');
     
     const token = coordinatorToken || adminToken;
@@ -133,7 +137,7 @@ export const markNotificationAsRead = async (notificationId) => {
 export const markAllNotificationsAsRead = async () => {
   try {
     // Check for both coordinator_token (first login) and admin_token (after first login)
-    const token = localStorage.getItem('coordinator_token') || localStorage.getItem('admin_token');
+    const token = localStorage.getItem('coordinator_token') || localStorage.getItem(TOKEN_KEY);
     if (!token) {
       throw new Error('No authentication token found. Please login again.');
     }
@@ -158,7 +162,7 @@ export const markAllNotificationsAsRead = async () => {
 export const deleteNotification = async (notificationId) => {
   try {
     // Check for both coordinator_token (first login) and admin_token (after first login)
-    const token = localStorage.getItem('coordinator_token') || localStorage.getItem('admin_token');
+    const token = localStorage.getItem('coordinator_token') || localStorage.getItem(TOKEN_KEY);
     if (!token) {
       throw new Error('No authentication token found. Please login again.');
     }

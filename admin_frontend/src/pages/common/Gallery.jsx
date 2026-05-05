@@ -11,6 +11,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { PhotoIcon as PhotoIconSolid } from '@heroicons/react/24/solid';
 
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
+
 const Gallery = () => {
   const { user } = useAuth();
   const [images, setImages] = useState([]);
@@ -25,7 +28,7 @@ const Gallery = () => {
   // Fetch gallery images
   const fetchImages = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       const response = await fetch(`${import.meta.env.VITE_API_URL}/gallery`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -61,7 +64,7 @@ const Gallery = () => {
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       const formData = new FormData();
       formData.append('image', file);
 
@@ -95,7 +98,7 @@ const Gallery = () => {
     }
 
     try {
-      const token = localStorage.getItem('admin_token');
+      const token = localStorage.getItem(TOKEN_KEY);
       const response = await fetch(`${import.meta.env.VITE_API_URL}/gallery/${imageId}`, {
         method: 'DELETE',
         headers: {

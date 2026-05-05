@@ -19,6 +19,15 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  // Forgot password states
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState(1); // 1: email, 2: otp, 3: new password
+  const [forgotLoading, setForgotLoading] = useState(false);
+  
   const navigate = useNavigate();
   const { login, user, loading: authLoading } = useAuth();
 
@@ -190,6 +199,118 @@ const Login = () => {
     }
   };
 
+  // Forgot password functions
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password-coordinator`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('OTP sent to your email address');
+        setForgotStep(2);
+      } else {
+        alert(data.message || 'Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      alert('Error sending OTP. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail, otp }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('OTP verified successfully');
+        setForgotStep(3);
+      } else {
+        alert(data.message || 'Invalid OTP');
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      alert('Error verifying OTP. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/reset-password-coordinator`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: forgotEmail, 
+          otp,
+          newPassword 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Password reset successfully! Please login with your new password.');
+        handleBackToLogin();
+      } else {
+        alert(data.message || 'Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('Error resetting password. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false);
+    setForgotStep(1);
+    setForgotEmail('');
+    setOtp('');
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   // Show loading while checking authentication
   if (authLoading) {
     return (
@@ -204,7 +325,7 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      <div className="max-w-md w-full space-y-8">
+      <div className="max-w-2xl w-full space-y-8">
         {/* Header */}
         <div className="text-center">
           <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
@@ -256,7 +377,7 @@ const Login = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Select Your Role
               </label>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
                 <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                   <input
                     type="radio"
@@ -270,7 +391,7 @@ const Login = () => {
                     <AcademicCapIcon className="h-5 w-5 text-blue-600 mr-2" />
                     <div>
                       <span className="font-medium text-gray-900">Administrator</span>
-                      <p className="text-sm text-gray-500">Full system access and management</p>
+                      <p className="text-xs text-gray-500">Full system access and management</p>
                     </div>
                   </div>
                 </label>
@@ -288,7 +409,7 @@ const Login = () => {
                     <UserCircleIcon className="h-5 w-5 text-green-600 mr-2" />
                     <div>
                       <span className="font-medium text-gray-900">Coordinator</span>
-                      <p className="text-sm text-gray-500">Department-specific coordination</p>
+                      <p className="text-xs text-gray-500">Department-specific coordination</p>
                     </div>
                   </div>
                 </label>
@@ -346,6 +467,7 @@ const Login = () => {
               <div className="text-sm">
                 <button
                   type="button"
+                  onClick={() => setShowForgotPassword(true)}
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
                   Forgot password?
@@ -374,14 +496,124 @@ const Login = () => {
               </button>
             </div>
           </form>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <p className="text-sm font-medium text-blue-900 mb-2">Admin Credentials:</p>
-            <p className="text-xs text-blue-700">Email: admin@apcoer.edu</p>
-            <p className="text-xs text-blue-700">Password: Admin@123</p>
-          </div>
         </div>
+
+        {/* Forgot Password Modal */}
+        {showForgotPassword && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-2xl bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Forgot Password - Coordinator
+                  </h3>
+                  <button
+                    onClick={handleBackToLogin}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Step 1: Enter Email */}
+                {forgotStep === 1 && (
+                  <form onSubmit={handleSendOTP} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Enter your coordinator email address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="coordinator@apcoer.edu"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Sending...' : 'Send OTP'}
+                    </button>
+                  </form>
+                )}
+
+                {/* Step 2: Enter OTP */}
+                {forgotStep === 2 && (
+                  <form onSubmit={handleVerifyOTP} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Enter OTP sent to your email
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="123456"
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Verifying...' : 'Verify OTP'}
+                    </button>
+                  </form>
+                )}
+
+                {/* Step 3: Enter New Password */}
+                {forgotStep === 3 && (
+                  <form onSubmit={handleResetPassword} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Enter new password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={6}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Confirm new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {forgotLoading ? 'Resetting...' : 'Reset Password'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center">

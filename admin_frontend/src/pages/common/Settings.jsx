@@ -15,6 +15,9 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 
+// Environment variables for token keys
+const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || 'admin_token';
+
 const Settings = () => {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -70,7 +73,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-password`, {
         method: 'POST',
         headers: {
@@ -108,7 +111,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/send-email-update-otp`, {
         method: 'POST',
         headers: {
@@ -141,7 +144,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-email-update-otp`, {
         method: 'POST',
         headers: {
@@ -183,7 +186,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-password`, {
         method: 'POST',
         headers: {
@@ -226,7 +229,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/update-password`, {
         method: 'POST',
         headers: {
@@ -264,7 +267,7 @@ const Settings = () => {
   const sendForgetPasswordOTP = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/send-forget-password-otp`, {
         method: 'POST',
         headers: {
@@ -295,7 +298,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/verify-forget-password-otp`, {
         method: 'POST',
         headers: {
@@ -338,7 +341,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/update-password-with-otp`, {
         method: 'POST',
         headers: {
@@ -388,7 +391,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('admin_token') || localStorage.getItem('coordinator_token');
+      const token = localStorage.getItem(TOKEN_KEY) || localStorage.getItem('coordinator_token');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/delete-account`, {
         method: 'DELETE',
         headers: {
@@ -404,7 +407,7 @@ const Settings = () => {
         setDeleteSection('success');
         setSuccess('Account deleted successfully. You will be logged out...');
         setTimeout(() => {
-          localStorage.removeItem('admin_token');
+          localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem('coordinator_token');
           window.location.href = '/login';
         }, 2000);
