@@ -242,11 +242,7 @@ export const getNewsById = async (req, res) => {
       });
     }
 
-    // Increment views for approved articles
-    if (news.status === 'approved') {
-      await News.incrementViews(req.params.id);
-    }
-
+    
     res.json({
       success: true,
       message: 'News article retrieved successfully',
@@ -284,11 +280,7 @@ export const getNewsBySlug = async (req, res) => {
       });
     }
 
-    // Increment views for approved articles
-    if (news.status === 'approved') {
-      await News.incrementViews(news.id);
-    }
-
+    
     res.json({
       success: true,
       message: 'News article retrieved successfully',

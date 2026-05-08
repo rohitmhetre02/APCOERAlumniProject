@@ -38,7 +38,8 @@ export const authenticateAdmin = async (req, res, next) => {
     // Check if user is admin (you can customize this logic)
     // For now, we'll consider the first registered user as admin
     // or you can add an 'is_admin' field to the users table
-    const isAdmin = user.role === 'admin' || user.email === 'admin@apcoer.edu';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@apcoer.edu.in';
+    const isAdmin = user.role === 'admin' || user.email === adminEmail;
     
     if (!isAdmin) {
       return res.status(403).json({
@@ -132,7 +133,8 @@ export const authenticateAdminOrCoordinator = async (req, res, next) => {
     }
 
     // Check if user is admin or coordinator
-    const isAdmin = user.role === 'admin' || user.email === 'admin@apcoer.edu';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@apcoer.edu.in';
+    const isAdmin = user.role === 'admin' || user.email === adminEmail;
     const isCoordinator = user.role === 'coordinator';
     
     console.log(' User Role Debug:', {
@@ -188,34 +190,77 @@ export const authenticateAdminOrCoordinator = async (req, res, next) => {
 // Optional: Create admin user if it doesn't exist
 export const ensureAdminExists = async () => {
   try {
-    const adminEmail = 'admin@apcoer.edu';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@apcoer.edu.in';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+    const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Admin';
+    const adminLastName = process.env.ADMIN_LAST_NAME || 'User';
+    
+    console.log('🔧 Checking/Creating admin user for email:', adminEmail);
+    console.log('👤 Admin name:', adminFirstName, adminLastName);
+    console.log('🔍 Environment variables debug:');
+    console.log('  - ADMIN_EMAIL from env:', process.env.ADMIN_EMAIL);
+    console.log('  - ADMIN_PASSWORD from env:', process.env.ADMIN_PASSWORD ? '***' : 'undefined');
+    console.log('  - ADMIN_FIRST_NAME from env:', process.env.ADMIN_FIRST_NAME);
+    console.log('  - ADMIN_LAST_NAME from env:', process.env.ADMIN_LAST_NAME);
+    
+    // First, remove any existing admin users with different emails to avoid conflicts
+    try {
+      const { pool } = await import('../config/database.js');
+      await pool.query('DELETE FROM users WHERE role = $1 AND email != $2', ['admin', adminEmail]);
+      console.log('🗑️ Removed old admin users with different emails');
+    } catch (cleanupError) {
+      console.warn('⚠️ Could not cleanup old admin users:', cleanupError.message);
+    }
+    
     let adminUser = await User.findByEmail(adminEmail);
     
     if (!adminUser) {
+      console.log('📝 Creating new admin user...');
       // Create admin user with direct database query (only basic fields)
       const { pool } = await import('../config/database.js');
       
-      const saltRounds = 12;
-      const bcrypt = await import('bcryptjs');
-      const hashedPassword = await bcrypt.default.hash('Admin@123', saltRounds);
-      
-      const adminQuery = `
-        INSERT INTO users (first_name, last_name, email, password, role, is_approved, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING id, first_name, last_name, email, role, is_approved, created_at
-      `;
-      
-      const result = await pool.query(adminQuery, [
-        'Admin',
-        'User', 
-        adminEmail,
-        hashedPassword,
-        'admin',
-        true
-      ]);
-      
-      adminUser = result.rows[0];
-      console.log(' Admin user created successfully:', adminEmail);
+      try {
+        const saltRounds = 12;
+        const bcrypt = await import('bcryptjs');
+        const hashedPassword = await bcrypt.default.hash(adminPassword, saltRounds);
+        console.log('🔐 Password hashed successfully');
+        
+        const adminQuery = `
+          INSERT INTO users (first_name, last_name, email, password, role, is_approved, created_at, updated_at)
+          VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          RETURNING id, first_name, last_name, email, role, is_approved, created_at
+        `;
+        
+        console.log('📊 Executing admin insert with values:', {
+          firstName: adminFirstName,
+          lastName: adminLastName,
+          email: adminEmail,
+          role: 'admin',
+          isApproved: true
+        });
+        
+        const result = await pool.query(adminQuery, [
+          adminFirstName,
+          adminLastName, 
+          adminEmail,
+          hashedPassword,
+          'admin',
+          true
+        ]);
+        
+        adminUser = result.rows[0];
+        console.log('✅ Admin user created successfully:', adminEmail);
+        console.log('👤 Admin user details:', {
+          id: adminUser.id,
+          email: adminUser.email,
+          role: adminUser.role,
+          isApproved: adminUser.is_approved
+        });
+      } catch (createError) {
+        console.error('❌ Failed to create admin user:', createError.message);
+        console.error('❌ Error details:', createError);
+        throw createError;
+      }
     } else {
       // Check if existing admin user has correct role and approval
       if (adminUser.role !== 'admin' || !adminUser.is_approved) {

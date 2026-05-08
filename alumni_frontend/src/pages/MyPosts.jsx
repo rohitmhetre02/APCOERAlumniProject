@@ -888,7 +888,7 @@ const MyPosts = () => {
                         <td className="px-6 py-4">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{opportunity.title}</div>
-                            <div className="text-sm text-gray-500">{opportunity.description?.substring(0, 100)}...</div>
+                            
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

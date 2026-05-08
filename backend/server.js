@@ -4,7 +4,6 @@ import app from './src/app.js';
 import { connectDB } from './src/config/database.js';
 import { initializeAllTables } from './src/models/index.js';
 import { ensureAdminExists } from './src/middleware/adminMiddleware.js';
-import { ensureCoordinatorExists } from './src/middleware/coordinatorMiddleware.js';
 import { initializeSocket } from './src/config/socket.js';
 import User from './src/models/User.js';
 import Event from './src/models/Event.js';
@@ -68,9 +67,8 @@ const startServer = async () => {
       console.log('📧 Email functionality will be available when email worker is started');
     }
     
-    // Ensure admin and coordinator users exist
+    // Ensure admin user exists
     await ensureAdminExists();
-    await ensureCoordinatorExists();
     
     // Start server
     server.listen(PORT, () => {

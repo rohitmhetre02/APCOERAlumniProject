@@ -131,11 +131,29 @@ const NewsDetails = () => {
 
       {/* 🔥 IMAGE (FIXED SIZE, NOT FULL WIDTH) */}
       <Card>
-        <img
-          src={news.image_url || 'https://picsum.photos/seed/news-default/800/400.jpg'}
-          alt={news.title}
-          className="w-full h-72 object-cover rounded-xl"
-        />
+        {news.image_url ? (
+          <img
+            src={
+              news.image_url.startsWith('http') 
+                ? news.image_url 
+                : `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${news.image_url}`
+            }
+            alt={news.title}
+            className="w-full h-72 object-cover rounded-xl"
+            onError={(e) => {
+              // If image fails to load, replace with "No Image" text
+              const parent = e.target.parentElement;
+              parent.innerHTML = '<div class="w-full h-72 bg-gray-100 rounded-xl flex items-center justify-center"><div class="text-center"><p class="text-gray-400 text-lg font-medium">No Image</p><p class="text-gray-300 text-sm">Image not available</p></div></div>';
+            }}
+          />
+        ) : (
+          <div className="w-full h-72 bg-gray-100 rounded-xl flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-gray-400 text-lg font-medium">No Image</p>
+              <p className="text-gray-300 text-sm">Image not available</p>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* CONTENT */}
@@ -151,12 +169,8 @@ const NewsDetails = () => {
 
       {/* ENGAGEMENT */}
       <Card>
-        <div className="flex justify-between items-center text-sm text-gray-600">
-          <div className="flex gap-6">
-            <span>❤️ {news.likes_count || 0}</span>
-            <span>💬 {news.comments_count || 0}</span>
-          </div>
-          <span>{news.views_count || news.views || 0} views</span>
+        <div className="flex items-center text-sm text-gray-600">
+          <span>❤️ {news.likes_count || 0}</span>
         </div>
       </Card>
 

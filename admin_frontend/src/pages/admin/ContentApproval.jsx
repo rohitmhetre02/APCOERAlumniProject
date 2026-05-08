@@ -521,6 +521,9 @@ const ContentApproval = () => {
                       Created By
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Role & Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -544,6 +547,16 @@ const ContentApproval = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {event.author_name || 'Unknown'}
                         <div className="text-sm text-gray-500">{event.author_email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="space-y-1">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            {event.author_role || 'Alumni'}
+                          </span>
+                          <div className="text-xs text-gray-600">
+                            {event.author_department || 'N/A'}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
@@ -596,6 +609,9 @@ const ContentApproval = () => {
                       Created By
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Role & Department
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -607,7 +623,6 @@ const ContentApproval = () => {
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">{opportunity.title}</div>
-                          <div className="text-sm text-gray-500">{opportunity.description}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -619,6 +634,16 @@ const ContentApproval = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {opportunity.author_name || 'Unknown'}
                         <div className="text-sm text-gray-500">{opportunity.author_email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="space-y-1">
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                            {opportunity.author_role || 'Alumni'}
+                          </span>
+                          <div className="text-xs text-gray-600">
+                            {opportunity.author_department || 'N/A'}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
@@ -672,6 +697,12 @@ const ContentApproval = () => {
                     Created By
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -695,6 +726,16 @@ const ContentApproval = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{event.author_name}</div>
                       <div className="text-sm text-gray-500">{event.author_email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="space-y-1">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          {event.author_role || 'Alumni'}
+                        </span>
+                        <div className="text-xs text-gray-600">
+                          {event.author_department || 'N/A'}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
@@ -749,6 +790,12 @@ const ContentApproval = () => {
                     Created By
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -771,6 +818,16 @@ const ContentApproval = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{opportunity.author_name}</div>
                       <div className="text-sm text-gray-500">{opportunity.author_email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="space-y-1">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          {opportunity.author_role || 'Alumni'}
+                        </span>
+                        <div className="text-xs text-gray-600">
+                          {opportunity.author_department || 'N/A'}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">

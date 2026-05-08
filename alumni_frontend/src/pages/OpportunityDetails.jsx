@@ -1,5 +1,15 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { 
+  MapPinIcon, 
+  BriefcaseIcon, 
+  ClockIcon, 
+  CurrencyDollarIcon, 
+  CalendarIcon,
+  BuildingOfficeIcon,
+  AcademicCapIcon,
+  UserGroupIcon
+} from "@heroicons/react/24/outline";
 import Card from "../components/ui/Card";
 import { useAuth } from "../context/AuthContext";
 
@@ -272,17 +282,35 @@ const OpportunityDetails = () => {
         <h1 className="text-2xl font-bold text-gray-900">
           {opportunity.title}
         </h1>
-        <p className="text-blue-600 font-medium mt-1">
-          {opportunity.company}
-        </p>
+        <div className="flex items-center gap-2 mt-2">
+          <BuildingOfficeIcon className="h-5 w-5 text-blue-600" />
+          <p className="text-blue-600 font-medium">
+            {opportunity.company}
+          </p>
+        </div>
 
         <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-600">
-          <span>📍 {opportunity.location || 'Not specified'}</span>
-          <span>💼 {opportunity.type}</span>
-          <span>⏳ {opportunity.experience_range || 'Not specified'}</span>
-          <span>💰 {opportunity.salary_range || 'Not specified'}</span>
+          <span className="flex items-center gap-1">
+            <MapPinIcon className="h-4 w-4" />
+            {opportunity.location || 'Not specified'}
+          </span>
+          <span className="flex items-center gap-1">
+            <BriefcaseIcon className="h-4 w-4" />
+            {opportunity.type}
+          </span>
+          <span className="flex items-center gap-1">
+            <ClockIcon className="h-4 w-4" />
+            {opportunity.experience_range || 'Not specified'}
+          </span>
+          <span className="flex items-center gap-1">
+            <CurrencyDollarIcon className="h-4 w-4" />
+            {opportunity.salary_range || 'Not specified'}
+          </span>
           {opportunity.deadline && (
-            <span>📅 Apply by: {new Date(opportunity.deadline).toLocaleDateString()}</span>
+            <span className="flex items-center gap-1">
+              <CalendarIcon className="h-4 w-4" />
+              Apply by: {new Date(opportunity.deadline).toLocaleDateString()}
+            </span>
           )}
         </div>
       </Card>
@@ -330,14 +358,16 @@ const OpportunityDetails = () => {
           <Card>
             <h3 className="font-semibold mb-3">Quick Info</h3>
 
-            <p><span className="text-gray-500">Posted:</span> {new Date(opportunity.created_at).toLocaleDateString()}</p>
-            {opportunity.deadline && (
-              <p><span className="text-gray-500">Deadline:</span> {new Date(opportunity.deadline).toLocaleDateString()}</p>
-            )}
-            <p><span className="text-gray-500">Type:</span> {opportunity.type}</p>
-            <p><span className="text-gray-500">Location:</span> {opportunity.location || 'Not specified'}</p>
-            <p><span className="text-gray-500">Experience:</span> {opportunity.experience_range || 'Not specified'}</p>
-            <p><span className="text-gray-500">Salary:</span> {opportunity.salary_range || 'Not specified'}</p>
+            <div className="space-y-1">
+              <p className="text-sm"><span className="text-gray-500">Posted:</span> {new Date(opportunity.created_at).toLocaleDateString()}</p>
+              {opportunity.deadline && (
+                <p className="text-sm"><span className="text-gray-500">Deadline:</span> {new Date(opportunity.deadline).toLocaleDateString()}</p>
+              )}
+              <p className="text-sm"><span className="text-gray-500">Type:</span> {opportunity.type}</p>
+              <p className="text-sm"><span className="text-gray-500">Location:</span> {opportunity.location || 'Not specified'}</p>
+              <p className="text-sm"><span className="text-gray-500">Experience:</span> {opportunity.experience_range || 'Not specified'}</p>
+              <p className="text-sm"><span className="text-gray-500">Salary:</span> {opportunity.salary_range || 'Not specified'}</p>
+            </div>
           </Card>
 
           {/* Actions */}
